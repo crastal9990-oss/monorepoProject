@@ -1,0 +1,10 @@
+# pnpm-workspace.yaml
+packages:
+  # 应用项目
+  - 'apps/*'
+  # 共享包
+  - 'packages/*'
+  # 开发工具
+  - 'tools/*'
+  # 排除模板文件
+  - '!**/templates/**'
