@@ -1,7 +1,12 @@
-export default function Home() {
+import { Button } from "@repo/ui"
+function ButtonDemo() {
   return (
-    <div>
-      <h1>欢迎来到 Awesome Monorepo</h1>
+    <div className="flex flex-wrap items-center gap-2 md:flex-row">
+      <Button variant="outline">漂亮的新按钮</Button>
+      <Button variant="outline" size="icon" aria-label="Submit">
+      </Button>
     </div>
   )
 }
+
+export default ButtonDemo
