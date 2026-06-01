@@ -14,6 +14,9 @@
       // 唯独遇到 @/lib/utils 时，Next.js 会精准地去 ../../packages/ui/src/lib/utils 获取。
       "@/lib/utils": [
         "../../packages/ui/src/lib/utils"
+      ],
+      "@ui/*": [
+        "../../packages/ui/src/*"
       ]
     },
     "allowJs": true,
