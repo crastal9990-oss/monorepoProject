@@ -1,13 +1,13 @@
 import { ReactNode } from 'react'
 
-export default function RootLayout({
+export default function MainLayout({
   children,
 }: {
   children: ReactNode
 }) {
   return (
-    <html lang="zh">
-      <body>{children}</body>
-    </html>
+    <div className="flex flex-col min-h-screen">
+      {children}
+    </div>
   )
 }

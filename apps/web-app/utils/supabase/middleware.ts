@@ -59,8 +59,10 @@ export async function updateSession(request: NextRequest) {
 
   // --- 路由保护逻辑 ---
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')
+  // 允许未登录用户访问的公开页面
+  const isPublicPage = isAuthPage || request.nextUrl.pathname.startsWith('/terms') || request.nextUrl.pathname.startsWith('/privacy') || request.nextUrl.pathname.startsWith('/auth/callback')
 
-  if (!user && !isAuthPage) {
+  if (!user && !isPublicPage) {
     // 未登录用户访问受保护的页面，重定向到登录页
     const url = request.nextUrl.clone()
     url.pathname = '/login'
