@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 import { login, signInWithGithub, signInWithGoogle } from "@/api/login"
 import { Button, Input, Label, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, toast } from "@repo/ui"
@@ -13,11 +14,12 @@ import { Button, Input, Label, Form, FormControl, FormField, FormItem, FormLabel
 // 定义 Zod 校验规则 (Schema)
 const emailSchema = z.object({
     email: z.string().email("请输入有效的邮箱地址。"),
-    password: z.string().min(1, "密码不能为空。"),
+    password: z.string().min(6, "密码至少需要 6 个字符。"),
 })
 
 export default function LoginPage() {
-    const [isPending, startTransition] = useTransition()
+    const router = useRouter()
+    const [isPending, startTransition] = useTransition() // 用于标记非紧急的更新，让 UI 保持响应
 
     const formEmail = useForm<z.infer<typeof emailSchema>>({
         resolver: zodResolver(emailSchema),
@@ -25,20 +27,24 @@ export default function LoginPage() {
     })
 
     function onSubmitEmail(values: z.infer<typeof emailSchema>) {
-        startTransition(async () => {
+        startTransition(() => {
             const formData = new FormData()
             formData.append("email", values.email)
             formData.append("password", values.password)
 
-            const res = await login(formData)
-            if (res?.error) {
-                toast.error(res.error)
-            }
+            login(formData).then((res) => {
+                if (res?.error) {
+                    toast.error(res.error)
+                } else if (res?.success) {
+                    toast.success(res.message)
+                    router.push('/dashboard')
+                }
+            })
         })
     }
 
     return (
-        <div 
+        <div
             className="relative min-h-screen flex items-center justify-center lg:justify-end bg-cover bg-center bg-no-repeat p-4 sm:p-8 lg:pr-24 xl:pr-40"
             style={{ backgroundImage: "url('/login.jpg')" }}
         >
@@ -46,7 +52,7 @@ export default function LoginPage() {
 
             {/* 登录卡片 */}
             <div className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl bg-background shadow-2xl border border-border flex flex-col p-8 animate-in fade-in zoom-in-95 duration-500">
-                
+
                 {/* 顶部 Logo 与欢迎语 */}
                 <div className="flex flex-col space-y-2 text-center mb-8">
                     <h1 className="text-2xl font-bold tracking-tight">智记云</h1>
@@ -76,7 +82,7 @@ export default function LoginPage() {
                                     </FormItem>
                                 )}
                             />
-                            
+
                             <FormField
                                 control={formEmail.control}
                                 name="password"
@@ -137,7 +143,7 @@ export default function LoginPage() {
                         </form>
                     </div>
                 </div>
-                
+
                 <p className="text-center text-sm text-muted-foreground mt-5">
                     还没有账号？{" "}
                     <Link href="/register" className="font-semibold text-primary hover:underline underline-offset-4">

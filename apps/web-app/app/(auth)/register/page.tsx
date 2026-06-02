@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import Link from "next/link"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 import { signup, signInWithGithub, signInWithGoogle } from "@/api/login"
 
@@ -19,8 +20,8 @@ const emailSchema = z.object({
 })
 
 export default function RegisterPage() {
+    const router = useRouter()
     const [isPending, startTransition] = useTransition()
-    const [serverError, setServerError] = useState<string | null>(null)
 
     const formEmail = useForm<z.infer<typeof emailSchema>>({
         resolver: zodResolver(emailSchema),
@@ -28,29 +29,26 @@ export default function RegisterPage() {
     })
 
     function onSubmitEmail(values: z.infer<typeof emailSchema>) {
-        setServerError(null)
-        startTransition(async () => {
+        startTransition(() => {
             const formData = new FormData()
             formData.append("email", values.email)
             formData.append("password", values.password)
 
-            const res = await signup(formData)
-            console.log(res);
-            
-            if (res?.error) {
-                toast.error(res.error)
-                formEmail.reset()
-            }
-            else if (res?.success) {
-                // 注册成功，清空表单
-                formEmail.reset()
-                toast.success(res.message) // 如果有全局 Toast，建议用 Toast
-            }
+            signup(formData).then((res) => {
+                if (res?.error) {
+                    toast.error(res.error)
+                    formEmail.reset()
+                }
+                else if (res?.success) {
+                    toast.success(res.message)
+                    formEmail.reset()
+                    router.push("/login")
+                }
+            })
         })
     }
-
     return (
-        <div 
+        <div
             className="relative min-h-screen flex items-center justify-center lg:justify-end bg-cover bg-center bg-no-repeat p-4 sm:p-8 lg:pr-24 xl:pr-40"
             style={{ backgroundImage: "url('/login.jpg')" }}
         >
@@ -58,7 +56,7 @@ export default function RegisterPage() {
 
             {/* 注册卡片 */}
             <div className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl bg-background shadow-2xl border border-border flex flex-col p-8 animate-in fade-in zoom-in-95 duration-500">
-                
+
                 {/* 顶部 Logo 与欢迎语 */}
                 <div className="flex flex-col space-y-2 text-center mb-8">
                     <h1 className="text-2xl font-bold tracking-tight">创建新账号</h1>
@@ -71,52 +69,46 @@ export default function RegisterPage() {
                     {/* --- 核心表单区 --- */}
                     <Form {...formEmail}>
                         <form key="email-form" onSubmit={formEmail.handleSubmit(onSubmitEmail)} className="space-y-4">
-                                <FormField
-                                    control={formEmail.control}
-                                    name="email"
-                                    render={({ field, fieldState }) => (
-                                        <FormItem>
-                                            <FormLabel>邮箱地址</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    placeholder="请输入邮箱"
-                                                    {...field}
-                                                    className={`bg-background/50 border-border/50 ${fieldState.invalid ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                                                />
-                                            </FormControl>
-                                            <FormMessage className="text-destructive" />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={formEmail.control}
-                                    name="password"
-                                    render={({ field, fieldState }) => (
-                                        <FormItem>
-                                            <FormLabel>设置密码</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="password"
-                                                    placeholder="请输入密码，至少6位"
-                                                    {...field}
-                                                    className={`bg-background/50 border-border/50 ${fieldState.invalid ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                                                />
-                                            </FormControl>
-                                            <FormMessage className="text-destructive" />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                {serverError && (
-                                    <div className="p-3 text-sm font-medium text-destructive bg-destructive/10 border border-destructive/20 rounded-md">
-                                        {serverError}
-                                    </div>
+                            <FormField
+                                control={formEmail.control}
+                                name="email"
+                                render={({ field, fieldState }) => (
+                                    <FormItem>
+                                        <FormLabel>邮箱地址</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="请输入邮箱"
+                                                {...field}
+                                                className={`bg-background/50 border-border/50 ${fieldState.invalid ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                                            />
+                                        </FormControl>
+                                        <FormMessage className="text-destructive" />
+                                    </FormItem>
                                 )}
-                                <Button type="submit" className="w-full !mt-6" disabled={isPending}>
-                                    {isPending ? "注册中..." : "注册账号"}
-                                </Button>
-                            </form>
-                        </Form>
+                            />
+                            <FormField
+                                control={formEmail.control}
+                                name="password"
+                                render={({ field, fieldState }) => (
+                                    <FormItem>
+                                        <FormLabel>设置密码</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="password"
+                                                placeholder="请输入密码，至少6位"
+                                                {...field}
+                                                className={`bg-background/50 border-border/50 ${fieldState.invalid ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                                            />
+                                        </FormControl>
+                                        <FormMessage className="text-destructive" />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button type="submit" className="w-full !mt-6" disabled={isPending}>
+                                {isPending ? "注册中..." : "注册账号"}
+                            </Button>
+                        </form>
+                    </Form>
 
                     {/* --- 分隔线 --- */}
                     <div className="relative">
