@@ -1,4 +1,7 @@
 import { ReactNode } from 'react'
+import { SidebarProvider, SidebarInset } from "@repo/ui"
+import { AppSidebar } from "../../components/layout/app-sidebar"
+import { TopHeader } from "../../components/layout/top-header"
 
 export default function MainLayout({
   children,
@@ -6,8 +9,12 @@ export default function MainLayout({
   children: ReactNode
 }) {
   return (
-    <div className="flex flex-col min-h-screen">
-      {children}
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <TopHeader />
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
   )
-}
+}

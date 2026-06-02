@@ -1,0 +1,16 @@
+"use client"
+
+import * as React from "react"
+import { Trash2 } from "lucide-react"
+
+export default function TrashPage() {
+    return (
+        <main className="flex flex-1 flex-col gap-6 p-6 lg:gap-10 lg:p-10 overflow-auto">
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in zoom-in duration-500 mt-20">
+                <Trash2 className="h-16 w-16 mb-4 text-muted-foreground/50" />
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">回收站</h1>
+                <p className="mt-2 text-sm">最近删除的文档会在这里保留 30 天。功能正在开发中...</p>
+            </div>
+        </main>
+    )
+}
