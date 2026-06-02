@@ -57,12 +57,17 @@ export async function updateSession(request: NextRequest) {
   // 刷新会话并获取当前用户
   const { data: { user } } = await supabase.auth.getUser()
 
-  // --- 路由保护逻辑 ---
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') || request.nextUrl.pathname.startsWith('/register')
-  // 允许未登录用户访问的公开页面
+  // 白名单
   const isPublicPage = isAuthPage || request.nextUrl.pathname.startsWith('/terms') || request.nextUrl.pathname.startsWith('/privacy') || request.nextUrl.pathname.startsWith('/auth/callback')
 
   if (!user && !isPublicPage) {
+    // 【关键修复】：如果是 Server Action 或普通的 API POST 请求，不要在中间件里硬重定向
+    // 否则 Server Action 会在前端返回 undefined
+    if (request.method === 'POST' || request.headers.has('next-action')) {
+      return response // 直接放行
+    }
+
     // 未登录用户访问受保护的页面，重定向到登录页
     const url = request.nextUrl.clone()
     url.pathname = '/login'

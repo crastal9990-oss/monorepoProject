@@ -4,8 +4,12 @@ import * as React from "react"
 import { Sparkles, FilePlus, Import, ArrowRight } from "lucide-react"
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@repo/ui"
 import { RecentNoteCard, Note } from "../../../components/dashboard/recent-note-card"
+import { useRouter } from "next/navigation"
+import { useTransition } from "react"
+import { createNewDocument } from "@/api/document"
+import { toast } from '@repo/ui'
 
-// 模拟数据 (优化了时间与标签的中文表达)
+
 const recentNotes: Note[] = [
     { id: 1, title: "SAD-LMLIIF 模型架构与渲染推导", excerpt: "在处理任意尺度超分辨率时，利用频率感知特征编码可以有效减少伪影。需要重点优化 CMSR 模块的搜索循环逻辑...", date: "2 小时前", tag: "计算机视觉" },
     { id: 2, title: "Supabase RBAC 权限设计方案", excerpt: "结合 JWT token，在 PostgreSQL 的 RLS 中配置不同角色的表级别访问策略，确保租户数据隔离...", date: "昨天", tag: "后端架构" },
@@ -13,8 +17,31 @@ const recentNotes: Note[] = [
     { id: 4, title: "本周工作复盘与下周 Todo", excerpt: "1. 修复了批量处理脚本的问题，已改为单图可视化处理。 2. 准备搭建基础的协作文档平台...", date: "5月 10日", tag: "项目管理" }
 ]
 
-// --- 页面主组件 ---
 export default function DashboardPage() {
+    const router = useRouter()
+    const [isPending, startTransition] = useTransition()
+
+    // 定义点击事件
+    const handleCreateNew = () => {
+        startTransition(() => {
+            createNewDocument().then((res) => {
+                if (res?.success && res?.id) {
+                    router.push(`/notes/${res.id}`)
+                } else {
+                    toast.error(res?.error)
+                    if (res?.status === 401) {
+                        setTimeout(() => {
+                            window.location.reload()
+                        }, 1500)
+                    }
+                }
+            }).catch((err) => {
+                // 如果出现真正的网络断开或 500 错误，走这里
+                toast.error(err.message || '网络请求失败，请重试')
+            })
+        })
+    }
+
     return (
         <main className="flex flex-1 flex-col gap-6 p-6 lg:gap-10 lg:p-10 overflow-auto">
 
@@ -41,10 +68,18 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer border border-border/50 bg-background shadow-sm transition-all duration-500 ease-out hover:shadow-lg hover:-translate-y-1 hover:border-foreground/50 group">
+                <Card onClick={handleCreateNew}
+                    className="cursor-pointer border border-border/50 bg-background shadow-sm transition-all duration-500 ease-out hover:shadow-lg hover:-translate-y-1 hover:border-foreground/50 group">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2 gap-2">
-                        <FilePlus className="h-4 w-4 text-muted-foreground transition-all duration-300 group-hover:text-foreground group-hover:scale-110" />
-                        <CardTitle className="text-[15px] font-semibold tracking-wide">新建空白文稿</CardTitle>
+                        {/* 增加一个 loading 状态的图标切换 */}
+                        {isPending ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        ) : (
+                            <FilePlus className="h-4 w-4 text-muted-foreground transition-all duration-300 group-hover:text-foreground group-hover:scale-110" />
+                        )}
+                        <CardTitle className="text-[15px] font-semibold tracking-wide">
+                            {isPending ? '创建中...' : '新建空白文稿'}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-[13px] text-muted-foreground leading-relaxed transition-colors duration-300 group-hover:text-foreground/90">
