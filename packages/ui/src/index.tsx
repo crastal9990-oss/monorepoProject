@@ -7,3 +7,7 @@ export * from "./components/ui/separator"
 export * from "./components/ui/label"
 export * from "./components/ui/form"
 export { Toaster, toast } from './components/ui/sonner'
+export * from "./components/ui/sidebar"
+export * from "./components/ui/skeleton"
+export * from "./components/ui/sheet"
+export * from "./components/ui/tooltip"
