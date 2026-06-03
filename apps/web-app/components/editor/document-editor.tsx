@@ -28,30 +28,30 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
     setSaveStatus("正在保存...")
 
-    const delayDebounceFn = setTimeout(async () => {
-      try {
-        // 生成一小段纯文本摘要（取前 50 个字），用于首页卡片展示
-        const excerpt = content.substring(0, 50).replace(/\n/g, ' ') + (content.length > 50 ? '...' : '')
+    const delayDebounceFn = setTimeout(() => {
 
-        // 调用 Server Action 保存到数据库
-        await updateDocument(initialDocument.id, {
-          title,
-          content,
-          excerpt
-        })
+      // 生成一小段纯文本摘要（取前 50 个字），用于首页卡片展示
+      const excerpt = content.substring(0, 50).replace(/\n/g, ' ') + (content.length > 50 ? '...' : '')
 
-        setSaveStatus("已保存")
-      } catch (err) {
-        setSaveStatus("保存失败")
-        toast.error("云端保存失败，请检查网络连接")
-      }
+      // 调用 Server Action 保存到数据库
+      updateDocument(initialDocument.id, {
+        title,
+        content,
+        excerpt
+      }).then((res) => {
+        if (res.success) setSaveStatus("已保存")
+        else {
+          setSaveStatus("保存失败")
+          toast.error("云端保存失败，请检查网络连接")
+        }
+      })
     }, 1000) // 用户停止打字 1 秒后触发保存
 
     return () => clearTimeout(delayDebounceFn)
   }, [title, content, initialDocument.id, initialDocument.title, initialDocument.content])
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto w-full p-6 lg:p-10">
+    <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-6 lg:p-10">
       {/* 顶栏：显示状态 */}
       <div className="flex items-center justify-between mb-8 text-sm text-muted-foreground font-mono">
         <span>ID: {initialDocument.id.split('-')[0]}</span>

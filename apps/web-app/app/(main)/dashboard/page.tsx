@@ -47,7 +47,7 @@ export default function DashboardPage() {
 
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">欢迎回来 👋</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">欢迎回来</h1>
                     <p className="text-sm text-muted-foreground mt-2">今天想记录点什么？或者让 AI 帮你整理思绪。</p>
                 </div>
             </div>

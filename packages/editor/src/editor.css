@@ -1,3 +1,37 @@
+/* --- 修复 Tailwind Prose 造成的 Tiptap 样式冲突 --- */
+
+/* 1. 强制所有文本标签继承外层 span 的颜色，使得颜色面板在加粗、删除线、标题等状态下均生效 */
+.ProseMirror strong,
+.ProseMirror em,
+.ProseMirror s,
+.ProseMirror u,
+.ProseMirror p,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  color: inherit !important;
+}
+
+/* 2. 重置段落和文字的巨大行距 */
+.ProseMirror p {
+  margin: 0.3em !important;
+  line-height: 1.5 !important;
+}
+
+/* 3. 适当缩小标题的上下间距 */
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  margin-top: 0.8em !important;
+  margin-bottom: 0.6em !important;
+}
+
 /* Placeholder styles for Tiptap */
 .tiptap p.is-editor-empty:first-child::before {
   color: #adb5bd;
@@ -5,4 +39,49 @@
   float: left;
   height: 0;
   pointer-events: none;
+}
+
+/* Custom selection color */
+.tiptap ::selection {
+  background-color: #e5e7eb;
+  /* gray-200 */
+  color: inherit;
+}
+
+.dark .tiptap ::selection {
+  background-color: #374151;
+  /* gray-700 */
+  color: inherit;
+}
+
+/* --- 修复选中状态下覆盖背景色无法预览的问题 --- */
+
+/* 覆盖浏览器默认的选中样式，使用半透明的蓝色（类似 Tailwind 的 blue-500 透明度 30%） */
+.ProseMirror ::selection {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  color: inherit !important;
+}
+
+/* 确保带有自定义背景色的 mark 标签在选中时也能透过半透明层正常混合颜色 */
+.ProseMirror mark::selection {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+/* --- 行内代码 (Inline Code) 样式 --- */
+.ProseMirror code {
+  background-color: rgba(135, 131, 120, 0.11);
+  padding: 0.2em 0.4em;
+  /* font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; */
+  font-size: 0.875em;
+  font-weight: 500;
+}
+
+.dark .ProseMirror code {
+  background-color: rgba(255, 255, 255, 0.089);
+}
+
+/* 隐藏 Tailwind Prose 自动给 code 标签添加的反引号 (backticks) */
+.ProseMirror code::before,
+.ProseMirror code::after {
+  content: none !important;
 }
