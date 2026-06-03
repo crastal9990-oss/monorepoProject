@@ -68,7 +68,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="无标题文稿"
+        placeholder="请输入标题"
         className="text-4xl font-bold border-none outline-none bg-transparent mb-6 text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
       />
 

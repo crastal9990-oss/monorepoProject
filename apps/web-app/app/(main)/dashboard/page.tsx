@@ -1,27 +1,97 @@
 "use client"
 
 import * as React from "react"
-import { Sparkles, FilePlus, Import, ArrowRight } from "lucide-react"
-import { Button, Card, CardContent, CardHeader, CardTitle } from "@repo/ui"
-import { RecentNoteCard, Note } from "../../../components/dashboard/recent-note-card"
+import { useState, useEffect, useTransition } from "react" // 🌟 新增 useState, useEffect
 import { useRouter } from "next/navigation"
-import { useTransition } from "react"
-import { createNewDocument } from "@/api/document"
+import Link from "next/link"
+import { Sparkles, FilePlus, Import, ArrowRight, Loader2, X } from "lucide-react"
+import { 
+    Button, Card, CardContent, CardHeader, CardTitle,
+    AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+    AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction
+} from "@repo/ui"
+import { RecentNoteCard, Note } from "@/components/dashboard/recent-note-card"
 import { toast } from '@repo/ui'
-
-
-const recentNotes: Note[] = [
-    { id: 1, title: "SAD-LMLIIF 模型架构与渲染推导", excerpt: "在处理任意尺度超分辨率时，利用频率感知特征编码可以有效减少伪影。需要重点优化 CMSR 模块的搜索循环逻辑...", date: "2 小时前", tag: "计算机视觉" },
-    { id: 2, title: "Supabase RBAC 权限设计方案", excerpt: "结合 JWT token，在 PostgreSQL 的 RLS 中配置不同角色的表级别访问策略，确保租户数据隔离...", date: "昨天", tag: "后端架构" },
-    { id: 3, title: "Next.js 首屏加载与 Tree-Shaking 优化", excerpt: "分析打出来的 bundle 大小，尽量将重型图表库采用 next/dynamic 进行懒加载，减少首屏阻塞时间...", date: "5月 12日", tag: "前端工程化" },
-    { id: 4, title: "本周工作复盘与下周 Todo", excerpt: "1. 修复了批量处理脚本的问题，已改为单图可视化处理。 2. 准备搭建基础的协作文档平台...", date: "5月 10日", tag: "项目管理" }
-]
+import { createNewDocument, getDocumentList, deleteDocument } from "@/api/document"
 
 export default function DashboardPage() {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
 
-    // 定义点击事件
+    const [recentNotes, setRecentNotes] = useState<Note[]>([])
+    const [isLoading, setIsLoading] = useState(true)
+    const [noteToDelete, setNoteToDelete] = useState<Note | null>(null)
+
+    useEffect(() => {
+        const cachedNotes = localStorage.getItem('dashboard_recent_notes') // 读缓存
+        if (cachedNotes) {
+            setRecentNotes(JSON.parse(cachedNotes))
+            setIsLoading(false) 
+        }
+        
+        getDocumentList(4)
+            .then((res) => {
+                if (res?.data) {
+                    const mappedNotes = res.data.map((doc: any) => ({
+                        id: doc.id,
+                        title: doc.title,
+                        excerpt: doc.excerpt,
+                        date: new Date(doc.updated_at).toLocaleDateString('zh-CN', {
+                            year: 'numeric', month: 'short', day: 'numeric'
+                        }),
+                        tag: doc.tags?.[0] || "默认分类"
+                    }))
+
+                    setRecentNotes(mappedNotes)
+                    localStorage.setItem('dashboard_recent_notes', JSON.stringify(mappedNotes))// 写缓存
+                }
+            })
+            .catch((err) => {
+                console.error('获取笔记列表失败', err)
+            })
+            .finally(() => {
+                setIsLoading(false)// 一开始没有缓存，关闭 loading
+            })
+    }, [])
+
+    const handleDeleteRequest = (id: string | number) => {
+        const note = recentNotes.find(n => n.id === id);
+        if (note) setNoteToDelete(note);
+    };
+
+    const confirmDelete = async () => {
+        if (!noteToDelete) return;
+        try {
+            const res = await deleteDocument(String(noteToDelete.id));
+            if (res?.success) {
+                toast.success('笔记已删除');
+                
+                // 删除成功后重新请求最新的数据
+                const listRes = await getDocumentList(4);
+                if (listRes?.data) {
+                    const mappedNotes = listRes.data.map((doc: any) => ({
+                        id: doc.id,
+                        title: doc.title,
+                        excerpt: doc.excerpt,
+                        date: new Date(doc.updated_at).toLocaleDateString('zh-CN', {
+                            year: 'numeric', month: 'short', day: 'numeric'
+                        }),
+                        tag: doc.tags?.[0] || "默认分类"
+                    }));
+                    setRecentNotes(mappedNotes);
+                    localStorage.setItem('dashboard_recent_notes', JSON.stringify(mappedNotes));
+                } else {
+                    toast.error(listRes?.error || '刷新列表失败');
+                }
+                setNoteToDelete(null);
+            } else {
+                toast.error(res?.error || '删除失败');
+            }
+        } catch (err: any) {
+            toast.error(err.message || '删除出错，请重试');
+        }
+    };
+
     const handleCreateNew = () => {
         startTransition(() => {
             createNewDocument().then((res) => {
@@ -36,7 +106,6 @@ export default function DashboardPage() {
                     }
                 }
             }).catch((err) => {
-                // 如果出现真正的网络断开或 500 错误，走这里
                 toast.error(err.message || '网络请求失败，请重试')
             })
         })
@@ -44,7 +113,6 @@ export default function DashboardPage() {
 
     return (
         <main className="flex flex-1 flex-col gap-6 p-6 lg:gap-10 lg:p-10 overflow-auto">
-
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">欢迎回来</h1>
@@ -52,7 +120,7 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* 快捷操作区 */}
+            {/* 快捷操作区 (保持不变) */}
             <div className="grid gap-5 md:grid-cols-3">
                 <Card className="relative overflow-hidden cursor-pointer border-transparent bg-primary text-primary-foreground shadow-lg transition-all duration-500 ease-out hover:shadow-2xl hover:-translate-y-1 group">
                     <div className="absolute inset-0 bg-[linear-gradient(to_right,#8882_1px,transparent_1px),linear-gradient(to_bottom,#8882_1px,transparent_1px)] bg-[size:14px_14px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 transition-opacity duration-500 group-hover:opacity-40" />
@@ -71,9 +139,8 @@ export default function DashboardPage() {
                 <Card onClick={handleCreateNew}
                     className="cursor-pointer border border-border/50 bg-background shadow-sm transition-all duration-500 ease-out hover:shadow-lg hover:-translate-y-1 hover:border-foreground/50 group">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2 gap-2">
-                        {/* 增加一个 loading 状态的图标切换 */}
                         {isPending ? (
-                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
                         ) : (
                             <FilePlus className="h-4 w-4 text-muted-foreground transition-all duration-300 group-hover:text-foreground group-hover:scale-110" />
                         )}
@@ -101,7 +168,7 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            {/* 最近笔记网格 */}
+            {/* 最近活动 */}
             <div className="mt-2">
                 <div className="flex items-center justify-between mb-5">
                     <h2 className="text-[17px] font-semibold tracking-tight text-foreground">最近活动</h2>
@@ -111,13 +178,46 @@ export default function DashboardPage() {
                     </Button>
                 </div>
 
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                    {recentNotes.map((note) => (
-                        <RecentNoteCard key={note.id} note={note} />
-                    ))}
-                </div>
+                {isLoading ? (
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="h-32 rounded-xl bg-muted/60 animate-pulse border border-border/50" />
+                        ))}
+                    </div>
+                ) : recentNotes.length > 0 ? (
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                        {recentNotes.map((note) => (
+                            <Link href={`/notes/${note.id}`} key={note.id} className="block outline-none">
+                                <RecentNoteCard note={note} onDelete={handleDeleteRequest} />
+                            </Link>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-dashed border-border rounded-xl bg-muted/20">
+                        <FilePlus className="h-8 w-8 text-muted-foreground/50 mb-3" />
+                        <p className="text-sm font-medium text-foreground">暂无笔记</p>
+                        <p className="text-xs text-muted-foreground mt-1">点击上方“新建空白文稿”开始记录</p>
+                    </div>
+                )}
             </div>
 
+            {/* 删除确认弹窗 */}
+            <AlertDialog open={!!noteToDelete} onOpenChange={(open) => { if (!open) setNoteToDelete(null) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>是否删除：{noteToDelete?.title}？</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            删除的内容将进入回收站，30 天后自动彻底删除
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setNoteToDelete(null)}>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete}>
+                            删除
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </main>
     )
 }

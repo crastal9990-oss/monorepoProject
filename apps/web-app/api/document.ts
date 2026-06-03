@@ -56,3 +56,45 @@ export async function updateDocument(
     }
     return { success: true, status: 200 }
 }
+
+// 获取笔记列表
+export async function getDocumentList(limit?: number) {
+    const supabase = createClient()
+    let query = supabase
+        .from('documents')
+        .select('*')
+        .eq('is_trashed', false)
+        .order('updated_at', { ascending: false })
+
+    if (limit) {
+        query = query.limit(limit)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+        return { error: '获取笔记列表失败', status: 500 }
+    }
+    return { success: true, data, status: 200 }
+}
+
+// 删除笔记
+export async function deleteDocument(id: string) {
+    const supabase = createClient()
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (!user || authError) {
+        return { error: '未登录或登录状态已过期', status: 401 }
+    }
+
+    const { error } = await supabase
+        .from('documents')
+        .update({ is_trashed: true })
+        .eq('id', id)
+        .eq('user_id', user.id) // 确保只能删除自己的笔记
+
+    if (error) {
+        return { error: '删除笔记失败', status: 500 }
+    }
+    return { success: true, status: 200 }
+}
