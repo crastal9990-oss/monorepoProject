@@ -85,3 +85,10 @@
 .ProseMirror code::after {
   content: none !important;
 }
+
+/* 当图片被选中时，显示主题色的外发光边框 */
+.tiptap img.ProseMirror-selectednode {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: 2px;
+  transition: outline 0.1s ease-in-out;
+}
