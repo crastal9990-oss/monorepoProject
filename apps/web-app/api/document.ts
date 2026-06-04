@@ -98,3 +98,34 @@ export async function deleteDocument(id: string) {
     }
     return { success: true, status: 200 }
 }
+
+// 上传图片
+export async function uploadImage(formData: FormData): Promise<string | null> {
+    const file = formData.get('file') as File
+    if (!file) return null
+
+    const supabase = createClient()
+
+    // 生成一个唯一的文件名避免覆盖
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+    const filePath = `uploads/${fileName}`
+
+    try {
+        const { data, error } = await supabase.storage
+            .from('notes-images') // 替换为你实际的 Bucket 名字
+            .upload(filePath, file)
+
+        if (error) throw error
+
+        // 获取图片的公开访问链接
+        const { data: publicUrlData } = supabase.storage
+            .from('notes-images')
+            .getPublicUrl(filePath)
+
+        return publicUrlData.publicUrl
+    } catch (error) {
+        console.error('图片上传失败:', error)
+        return null
+    }
+}

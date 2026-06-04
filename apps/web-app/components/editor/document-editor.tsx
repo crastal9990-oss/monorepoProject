@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { updateDocument } from "@/api/document"
+import { updateDocument, uploadImage } from "@/api/document"
 import { toast } from '@repo/ui'
 import { Editor } from '@repo/editor'
 
@@ -78,6 +78,11 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
         <Editor
           content={content}
           onChange={setContent}
+          uploadFn={async (file) => {
+            const formData = new FormData()
+            formData.append('file', file)
+            return await uploadImage(formData)
+          }}
           placeholder="开始输入正文，或者输入 '/' 唤起 AI 指令..."
           className="prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px]"
         />

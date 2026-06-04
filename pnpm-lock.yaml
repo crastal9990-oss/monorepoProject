@@ -104,6 +104,9 @@ importers:
 
   packages/editor:
     dependencies:
+      '@repo/ui':
+        specifier: workspace:*
+        version: link:../ui
       '@tiptap/extension-bubble-menu':
         specifier: ^3.24.0
         version: 3.24.0(@tiptap/core@3.24.0)(@tiptap/pm@3.24.0)
