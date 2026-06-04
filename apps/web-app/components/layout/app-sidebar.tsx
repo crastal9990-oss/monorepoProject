@@ -66,16 +66,23 @@ export function AppSidebar() {
                     </SidebarGroupLabel>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {navMain.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild isActive={pathname.startsWith(item.url)} tooltip={item.title} className="transition-all duration-300">
-                                        <Link href={item.url}>
-                                            <item.icon className="size-4" />
-                                            <span className="font-medium text-sm tracking-wide">{item.title}</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {navMain.map((item) => {
+                                // 只有当路径完全等于 url，或者是以 url/ 开头的子路由时，才判定为 active
+                                const isActive = pathname === item.url || pathname.startsWith(`${item.url}/`)
+                                return (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton asChild isActive={isActive} tooltip={item.title} className={`transition-all duration-300 
+                                        ${isActive ? "bg-accent text-accent-foreground font-semibold shadow-sm" // 选中时的状态：背景加深、文字变色加粗
+                                                : "text-muted-foreground hover:bg-muted hover:text-foreground" // 未选中时的悬浮状态
+                                            }`}>
+                                            <Link href={item.url}>
+                                                <item.icon className="size-4" />
+                                                <span className="font-medium text-sm tracking-wide">{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                )
+                            })}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>

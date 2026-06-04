@@ -19,7 +19,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   const [content, setContent] = useState(initialDocument.content || "")
   const [saveStatus, setSaveStatus] = useState("已保存")
 
-  // 核心：防抖自动保存逻辑
+  // 防抖自动保存逻辑
   useEffect(() => {
     // 如果数据完全没变，不触发保存
     if (title === initialDocument.title && content === (initialDocument.content || "")) {
@@ -29,9 +29,9 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     setSaveStatus("正在保存...")
 
     const delayDebounceFn = setTimeout(() => {
-
-      // 生成一小段纯文本摘要（取前 50 个字），用于首页卡片展示
-      const excerpt = content.substring(0, 50).replace(/\n/g, ' ') + (content.length > 50 ? '...' : '')
+      // 提取纯文本并生成一小段摘要（取前 50 个字），用于首页卡片展示
+      const plainText = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
+      const excerpt = plainText.substring(0, 50).replace(/\n/g, ' ') + (plainText.length > 50 ? '...' : '')
 
       // 调用 Server Action 保存到数据库
       updateDocument(initialDocument.id, {
@@ -52,16 +52,6 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
   return (
     <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-6 lg:p-10">
-      {/* 顶栏：显示状态 */}
-      <div className="flex items-center justify-between mb-8 text-sm text-muted-foreground font-mono">
-        <span>ID: {initialDocument.id.split('-')[0]}</span>
-        <span className="flex items-center gap-2">
-          {saveStatus === "正在保存..." && (
-            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          )}
-          {saveStatus}
-        </span>
-      </div>
 
       {/* 标题输入区 */}
       <input
@@ -71,6 +61,17 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
         placeholder="请输入标题"
         className="text-4xl font-bold border-none outline-none bg-transparent mb-6 text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
       />
+
+      {/* 用户id和保存状态 */}
+      <div className="flex items-center justify-between mb-8 text-sm text-muted-foreground font-mono">
+        <span>ID: {initialDocument.id.split('-')[0]}</span>
+        <span className="flex items-center gap-2">
+          {saveStatus === "正在保存..." && (
+            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          )}
+          {saveStatus}
+        </span>
+      </div>
 
       {/* 正文输入区 */}
       <div className="flex-1 w-full min-h-[500px] cursor-text" onClick={() => document.querySelector('.ProseMirror')?.focus()}>

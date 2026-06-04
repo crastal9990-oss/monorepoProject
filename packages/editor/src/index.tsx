@@ -63,8 +63,8 @@ const MenuButton = ({ onClick, isActive, children, title }: any) => (
       type="button"
       onMouseDown={(e) => { e.preventDefault(); onClick(); }}
       className={`p-2 flex items-center justify-center text-sm rounded-md transition-all duration-200 ${isActive
-          ? 'bg-gray-200 dark:bg-gray-700 text-foreground shadow-sm'
-          : 'hover:bg-muted text-muted-foreground hover:text-foreground hover:shadow-sm'
+        ? 'bg-gray-200 dark:bg-gray-700 text-foreground shadow-sm'
+        : 'hover:bg-muted text-muted-foreground hover:text-foreground hover:shadow-sm'
         }`}
     >
       {children}
@@ -158,7 +158,7 @@ export function Editor({ content, onChange, className, placeholder }: EditorProp
   }
 
   return (
-    <div className="tiptap-wrapper relative border border-border rounded-md bg-background overflow-hidden" onMouseLeave={closeDropdown}>
+    <div className="tiptap-wrapper relative rounded-md bg-background overflow-hidden" onMouseLeave={closeDropdown}>
       {editor && (
         <BubbleMenu
           editor={editor}
@@ -197,8 +197,8 @@ export function Editor({ content, onChange, className, placeholder }: EditorProp
                       closeDropdown()
                     }}
                     className={`px-4 py-2 text-left text-sm hover:bg-muted transition-colors ${(item.level === 0 ? editor.isActive('paragraph') : editor.isActive('heading', { level: item.level }))
-                        ? 'bg-gray-200 dark:bg-gray-800 text-foreground font-medium'
-                        : 'text-foreground'
+                      ? 'bg-gray-200 dark:bg-gray-800 text-foreground font-medium'
+                      : 'text-foreground'
                       }`}
                   >
                     {item.label}
@@ -323,8 +323,8 @@ export function Editor({ content, onChange, className, placeholder }: EditorProp
               <button
                 onMouseDown={(e) => { e.preventDefault(); toggleDropdown('color'); }}
                 className={`p-2 flex items-center justify-center text-sm rounded-md transition-all duration-200 ${activeDropdown === 'color'
-                    ? 'bg-gray-200 dark:bg-gray-700 shadow-sm'
-                    : 'hover:bg-muted text-muted-foreground hover:text-foreground hover:shadow-sm'
+                  ? 'bg-gray-200 dark:bg-gray-700 shadow-sm'
+                  : 'hover:bg-muted text-muted-foreground hover:text-foreground hover:shadow-sm'
                   }`}
               >
                 <div className="flex flex-col items-center justify-center relative pointer-events-none">
@@ -356,8 +356,8 @@ export function Editor({ content, onChange, className, placeholder }: EditorProp
                           editor.chain().focus().setColor(color).run();
                         }}
                         className={`w-7 h-7 flex items-center justify-center border rounded-md text-sm font-bold hover:scale-110 transition-transform ${editor.isActive('textStyle', { color })
-                            ? 'border-blue-500 ring-1 ring-blue-500 shadow-sm'
-                            : 'border-gray-200 dark:border-gray-700'
+                          ? 'border-blue-500 ring-1 ring-blue-500 shadow-sm'
+                          : 'border-gray-200 dark:border-gray-700'
                           }`}
                         style={{ color }}
                       >
@@ -383,8 +383,8 @@ export function Editor({ content, onChange, className, placeholder }: EditorProp
                           }
                         }}
                         className={`w-6 h-6 rounded-md border hover:scale-110 transition-transform ${editor.isActive('highlight', { color })
-                            ? 'border-blue-500 ring-1 ring-blue-500 shadow-sm'
-                            : 'border-gray-200 dark:border-gray-700'
+                          ? 'border-blue-500 ring-1 ring-blue-500 shadow-sm'
+                          : 'border-gray-200 dark:border-gray-700'
                           }`}
                         style={{
                           background: color === 'transparent'

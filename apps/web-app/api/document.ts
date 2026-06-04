@@ -18,7 +18,7 @@ export async function createNewDocument() {
         .insert([
             {
                 user_id: user.id,
-                title: '无标题文稿',
+                title: '',
                 excerpt: '开始你的记录...'
             }
         ])
@@ -46,7 +46,7 @@ export async function updateDocument(
         .from('documents')
         .update({
             ...updates,
-            updated_at: new Date().toISOString() 
+            updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .eq('user_id', user.id) // 双重保险，确保只能改自己的
