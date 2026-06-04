@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { updateDocument, uploadImage } from "@/api/document"
 import { toast } from '@repo/ui'
 import { Editor } from '@repo/editor'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft } from 'lucide-react'
 
 // 定义传入数据的类型
 interface DocumentEditorProps {
@@ -15,6 +17,7 @@ interface DocumentEditorProps {
 }
 
 export default function DocumentEditor({ initialDocument }: DocumentEditorProps) {
+  const router = useRouter()
   const [title, setTitle] = useState(initialDocument.title)
   const [content, setContent] = useState(initialDocument.content || "")
   const [saveStatus, setSaveStatus] = useState("已保存")
@@ -52,6 +55,15 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
   return (
     <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-6 lg:p-10">
+      
+      {/* 返回 */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6 text-sm w-fit"
+      >
+        <ChevronLeft className="w-4 h-4 mr-1" />
+        返回
+      </button>
 
       {/* 标题输入区 */}
       <input
@@ -74,7 +86,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
       </div>
 
       {/* 正文输入区 */}
-      <div className="flex-1 w-full min-h-[500px] cursor-text" onClick={() => document.querySelector('.ProseMirror')?.focus()}>
+      <div className="flex-1 w-full min-h-[500px] cursor-text" onClick={() => document.querySelector<HTMLElement>('.ProseMirror')?.focus()}>
         <Editor
           content={content}
           onChange={setContent}

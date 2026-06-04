@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server" // 根据你的实际 supabase server 路径调整
 import { redirect } from "next/navigation"
+import { revalidatePath } from "next/cache"
 
 // 新建笔记
 export async function createNewDocument() {
@@ -28,6 +29,8 @@ export async function createNewDocument() {
     if (error) {
         return { error: '创建笔记失败' }
     }
+    
+    revalidatePath('/notes')
     return { success: true, id: data.id, status: 200 }
 }
 
@@ -54,6 +57,8 @@ export async function updateDocument(
     if (error) {
         return { error: '保存失败', status: 500 }
     }
+    
+    revalidatePath('/notes')
     return { success: true, status: 200 }
 }
 
@@ -78,6 +83,21 @@ export async function getDocumentList(limit?: number) {
     return { success: true, data, status: 200 }
 }
 
+// 获取回收站笔记列表
+export async function getTrashedDocumentList() {
+    const supabase = createClient()
+    const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('is_trashed', true)
+        .order('updated_at', { ascending: false })
+
+    if (error) {
+        return { error: '获取回收站列表失败', status: 500 }
+    }
+    return { success: true, data, status: 200 }
+}
+
 // 删除笔记
 export async function deleteDocument(id: string) {
     const supabase = createClient()
@@ -96,6 +116,9 @@ export async function deleteDocument(id: string) {
     if (error) {
         return { error: '删除笔记失败', status: 500 }
     }
+    
+    revalidatePath('/notes')
+    revalidatePath('/trash')
     return { success: true, status: 200 }
 }
 

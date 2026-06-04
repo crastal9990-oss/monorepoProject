@@ -172,9 +172,11 @@ export default function DashboardPage() {
             <div className="mt-2">
                 <div className="flex items-center justify-between mb-5">
                     <h2 className="text-[17px] font-semibold tracking-tight text-foreground">最近活动</h2>
-                    <Button variant="ghost" size="sm" className="text-[13px] font-medium text-muted-foreground group">
-                        查看全部
-                        <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                    <Button variant="ghost" size="sm" className="text-[13px] font-medium text-muted-foreground group" asChild>
+                        <Link href="/notes">
+                            查看全部
+                            <ArrowRight className="ml-1 h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                        </Link>
                     </Button>
                 </div>
 
