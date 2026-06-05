@@ -29,38 +29,38 @@ export async function createNewDocument() {
     if (error) {
         return { error: '创建笔记失败' }
     }
-    
+
     revalidatePath('/notes')
     return { success: true, id: data.id, status: 200 }
 }
 
-// 保存笔记
-export async function updateDocument(
-    id: string,
-    updates: { title?: string; content?: string; excerpt?: string }
-) {
-    const supabase = createClient()
+// 保存笔记  => '@/api/search'
+// export async function updateDocument(
+//     id: string,
+//     updates: { title?: string; content?: string; excerpt?: string }
+// ) {
+//     const supabase = createClient()
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { error: '未登录或登录状态已过期', status: 401 }
+//     const { data: { user } } = await supabase.auth.getUser()
+//     if (!user) return { error: '未登录或登录状态已过期', status: 401 }
 
-    // 执行更新操作
-    const { error } = await supabase
-        .from('documents')
-        .update({
-            ...updates,
-            updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('user_id', user.id) // 双重保险，确保只能改自己的
+//     // 执行更新操作
+//     const { error } = await supabase
+//         .from('documents')
+//         .update({
+//             ...updates,
+//             updated_at: new Date().toISOString()
+//         })
+//         .eq('id', id)
+//         .eq('user_id', user.id) // 双重保险，确保只能改自己的
 
-    if (error) {
-        return { error: '保存失败', status: 500 }
-    }
-    
-    revalidatePath('/notes')
-    return { success: true, status: 200 }
-}
+//     if (error) {
+//         return { error: '保存失败', status: 500 }
+//     }
+
+//     revalidatePath('/notes')
+//     return { success: true, status: 200 }
+// }
 
 // 获取笔记列表
 export async function getDocumentList(limit?: number) {
@@ -116,7 +116,7 @@ export async function deleteDocument(id: string) {
     if (error) {
         return { error: '删除笔记失败', status: 500 }
     }
-    
+
     revalidatePath('/notes')
     revalidatePath('/trash')
     return { success: true, status: 200 }
