@@ -100,39 +100,41 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   }
 
   return (
-    <div className="flex flex-col h-full max-w-5xl mx-auto w-full p-6 lg:p-10">
+    <div className="flex flex-col h-full max-w-5xl mx-auto w-full relative">
+      {/* 顶部固定区域 */}
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-6 lg:pt-10 px-6 lg:px-10 pb-4 border-b border-transparent transition-all">
+        {/* 返回按钮：改用 handleBack */}
+        <button
+          onClick={handleBack}
+          className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6 text-sm w-fit"
+        >
+          <ChevronLeft className="w-4 h-4 mr-1" />
+          返回
+        </button>
 
-      {/* 返回按钮：改用 handleBack */}
-      <button
-        onClick={handleBack}
-        className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6 text-sm w-fit"
-      >
-        <ChevronLeft className="w-4 h-4 mr-1" />
-        返回
-      </button>
+        {/* 标题输入区 */}
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="请输入标题"
+          className="w-full text-4xl font-bold border-none outline-none bg-transparent mb-6 text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
+        />
 
-      {/* 标题输入区 */}
-      <input
-        type="text"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="请输入标题"
-        className="text-4xl font-bold border-none outline-none bg-transparent mb-6 text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
-      />
-
-      {/* 用户id和保存状态 */}
-      <div className="flex items-center justify-between mb-8 text-sm text-muted-foreground font-mono">
-        <span>ID: {initialDocument.id.split('-')[0]}</span>
-        <span className="flex items-center gap-2">
-          {saveStatus.includes("正在") && (
-            <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-          )}
-          {saveStatus}
-        </span>
+        {/* 用户id和保存状态 */}
+        <div className="flex items-center justify-between text-sm text-muted-foreground font-mono">
+          <span>ID: {initialDocument.id.split('-')[0]}</span>
+          <span className="flex items-center gap-2">
+            {saveStatus.includes("正在") && (
+              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+            )}
+            {saveStatus}
+          </span>
+        </div>
       </div>
 
       {/* 正文输入区 */}
-      <div className="flex-1 w-full min-h-[500px] cursor-text" onClick={() => document.querySelector<HTMLElement>('.ProseMirror')?.focus()}>
+      <div className="flex-1 w-full px-6 lg:px-10 py-6 cursor-text" onClick={() => document.querySelector<HTMLElement>('.ProseMirror')?.focus()}>
         <Editor
           content={content}
           onChange={setContent}
