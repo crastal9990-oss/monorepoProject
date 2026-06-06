@@ -65,9 +65,13 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     // ⏱️ 计时器 2：深度向量保存（停顿 15 秒完全没敲击键盘才触发）
     vectorSaveTimer.current = setTimeout(() => {
       //setSaveStatus("正在生成 AI 搜索索引...")
+      console.log('进入向量更新了');
+      
       updateDocument(initialDocument.id, { title, content, excerpt }, true).then((res) => {
         if (res.success) {
           setSaveStatus("已保存")
+          console.log(2222);
+          
           hasPendingVectorSave.current = false // 向量更新完毕，清除标记
         } else {
           setSaveStatus("索引生成失败")
@@ -81,14 +85,15 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
       if (textSaveTimer.current) clearTimeout(textSaveTimer.current)
       if (vectorSaveTimer.current) clearTimeout(vectorSaveTimer.current)
     }
-  }, [title, content, initialDocument.id, initialDocument.title, initialDocument.content])
+  }, [title, content])
 
   // ✨ 新增：处理安全退出（拦截返回按钮）
-  const handleBack = async () => {
+  const handleBack = () => {
     if (hasPendingVectorSave.current) {
       const excerpt = generateExcerpt(content)
-      // 强制触发一次向量更新
-      await updateDocument(initialDocument.id, { title, content, excerpt }, true)
+      updateDocument(initialDocument.id, { title, content, excerpt }, true).catch(err => {
+        console.error("后台向量更新失败:", err)
+      })
       hasPendingVectorSave.current = false
     }
     router.back()

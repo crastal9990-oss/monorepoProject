@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { Search, Bell } from "lucide-react"
-import { Button, Input, SidebarTrigger } from "@repo/ui"
+import { Bell } from "lucide-react"
+import { Button, SidebarTrigger } from "@repo/ui"
+import { SearchCommand } from "./search-command"
 
 export function TopHeader() {
     return (
@@ -10,16 +11,7 @@ export function TopHeader() {
             <SidebarTrigger className="-ml-1 transition-transform hover:scale-105 duration-300" />
 
             <div className="w-full flex-1">
-                <form>
-                    <div className="relative group max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors duration-300 group-focus-within:text-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="搜索标题、内容或标签..."
-                            className="w-full bg-muted/30 pl-9 shadow-sm border-border/50 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-foreground transition-all duration-300 rounded-md text-[13px] font-medium"
-                        />
-                    </div>
-                </form>
+                <SearchCommand />
             </div>
 
             <Button variant="outline" size="icon" className="h-8 w-8 rounded-md transition-all duration-300 hover:shadow-md">

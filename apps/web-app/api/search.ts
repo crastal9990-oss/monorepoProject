@@ -4,7 +4,10 @@ import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    baseURL: process.env.OPENAI_BASE_URL 
+});
 
 // 提取纯文本的占位函数 (你需要根据你的编辑器格式实现)
 function extractTextFromJson(content: any): string {
@@ -61,14 +64,16 @@ export async function updateDocument(
 
             if (chunks.length > 0) {
                 const embeddingResponse = await openai.embeddings.create({
-                    model: 'text-embedding-3-small',
+                    model: 'embedding-3',
                     input: chunks,
-                });
+                    encoding_format: 'float',
+                    dimensions: 512
+                } as any);
 
                 const embeddingsToInsert = embeddingResponse.data.map((item, index) => ({
                     document_id: id,
                     content: chunks[index],
-                    embedding: item.embedding,
+                    embedding: `[${item.embedding.join(',')}]`,
                     metadata: { chunk_index: index }
                 }));
 
@@ -80,11 +85,54 @@ export async function updateDocument(
             }
         }
 
-        revalidatePath('/notes');
+        if (shouldUpdateEmbedding) {
+            revalidatePath('/notes');
+        }
         return { success: true, status: 200 };
 
     } catch (error: any) {
         console.error('更新文档或向量失败:', error);
+        return { error: error.message, status: 500 };
+    }
+}
+
+// ============================================================
+// 🔍 混合搜索：全文检索 + 语义向量搜索（RRF 融合排序）
+// ============================================================
+export async function searchDocuments(query: string) {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: '未登录', status: 401 };
+
+    if (!query || query.trim().length === 0) {
+        return { success: true, data: [], status: 200 };
+    }
+
+    try {
+        // 1. 先将搜索词向量化
+        const embeddingResponse = await openai.embeddings.create({
+            model: 'embedding-3',
+            input: query.trim(),
+            encoding_format: 'float',
+            dimensions: 512
+        } as any);
+
+        const queryEmbedding = embeddingResponse.data[0].embedding;
+
+        // 2. 调用数据库的混合搜索函数（全文检索 + 语义搜索 RRF 融合）
+        const { data, error } = await supabase.rpc('hybrid_search_documents', {
+            query_text: query.trim(),
+            query_embedding: `[${queryEmbedding.join(',')}]`,
+            match_count: 10,
+            rrf_k: 60,
+        });
+
+        if (error) throw new Error(`搜索失败: ${error.message}`);
+
+        return { success: true, data: data || [], status: 200 };
+
+    } catch (error: any) {
+        console.error('搜索文档失败:', error);
         return { error: error.message, status: 500 };
     }
 }
