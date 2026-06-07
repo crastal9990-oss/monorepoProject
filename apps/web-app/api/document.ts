@@ -152,3 +152,11 @@ export async function uploadImage(formData: FormData): Promise<string | null> {
         return null
     }
 }
+
+// ✅ 协同编辑退出时调用：让 Next.js 丢弃笔记列表和仪表板的缓存
+// 确保用户返回时能看到最新的 excerpt/content
+export async function revalidateAfterEdit() {
+    revalidatePath('/notes')
+    revalidatePath('/dashboard')
+    return { success: true }
+}

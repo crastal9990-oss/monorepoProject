@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { uploadImage } from "@/api/document"
-import { updateDocument } from '@/api/search'
+import { uploadImage, revalidateAfterEdit } from "@/api/document"
 import { toast } from '@repo/ui'
-import { Editor } from '@repo/editor'
+import { CollaborativeEditor } from '@repo/editor'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
 
 // 定义传入数据的类型
 interface DocumentEditorProps {
@@ -17,93 +17,95 @@ interface DocumentEditorProps {
   }
 }
 
+// ws-server 地址（生产环境通过环境变量注入）
+const WS_SERVER_URL = process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:1234'
+
 export default function DocumentEditor({ initialDocument }: DocumentEditorProps) {
   const router = useRouter()
   const [title, setTitle] = useState(initialDocument.title)
-  const [content, setContent] = useState(initialDocument.content || "")
-  const [saveStatus, setSaveStatus] = useState("已保存")
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
+  const [authToken, setAuthToken] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string>('匿名用户')
 
-  // ✨ 新增：使用 useRef 管理定时器和状态，跨渲染周期保持稳定
-  const textSaveTimer = useRef<NodeJS.Timeout | null>(null)
-  const vectorSaveTimer = useRef<NodeJS.Timeout | null>(null)
-  const hasPendingVectorSave = useRef(false) // 记录是否有未生成的向量
-
-  // 辅助函数：提取摘要（复用你原来的优秀逻辑）
-  const generateExcerpt = (htmlContent: string) => {
-    const plainText = htmlContent.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
-    return plainText.substring(0, 50).replace(/\n/g, ' ') + (plainText.length > 50 ? '...' : '')
-  }
-
-  // 双重防抖自动保存逻辑
+  // ── 获取 Supabase Session Token，用于 Hocuspocus 鉴权 ──────────────────────
   useEffect(() => {
-    // 如果数据完全没变，不触发保存
-    if (title === initialDocument.title && content === (initialDocument.content || "")) {
-      return
+    const supabase = createClient()
+
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        setAuthToken(session.access_token)
+        // 用邮箱前缀或 metadata 里的名字作为光标显示名
+        const displayName =
+          session.user.user_metadata?.full_name ||
+          session.user.email?.split('@')[0] ||
+          '匿名用户'
+        setUserName(displayName)
+      }
     }
 
-    setSaveStatus("正在保存...")
-    hasPendingVectorSave.current = true // 标记当前有未做向量化的改动
+    fetchSession()
 
-    // 清除之前的定时器（用户还在疯狂打字，重新计时）
-    if (textSaveTimer.current) clearTimeout(textSaveTimer.current)
-    if (vectorSaveTimer.current) clearTimeout(vectorSaveTimer.current)
+    // 监听 token 刷新，保持 token 始终最新
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setAuthToken(session.access_token)
+      } else {
+        setAuthToken(null)
+      }
+    })
 
-    const excerpt = generateExcerpt(content)
+    return () => subscription.unsubscribe()
+  }, [])
 
-    // ⏱️ 计时器 1：常规文本保存（停顿 1.5 秒触发，不花钱，保证数据不丢）
-    textSaveTimer.current = setTimeout(() => {
-      // 注意这里的第三个参数是 false
-      updateDocument(initialDocument.id, { title, content, excerpt }, false).then((res) => {
-        if (res.success) setSaveStatus("已保存")
-        else {
-          setSaveStatus("保存失败")
-          toast.error("云端保存失败，请检查网络连接")
-        }
-      })
+  // ── 标题的独立保存（协同模式下，正文由 Hocuspocus 处理，标题仍走 HTTP）──────
+  const titleSaveTimer = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (title === initialDocument.title) return
+
+    setSaveStatus('saving')
+    if (titleSaveTimer.current) clearTimeout(titleSaveTimer.current)
+
+    titleSaveTimer.current = setTimeout(async () => {
+      try {
+        const supabase = createClient()
+        const { error } = await supabase
+          .from('documents')
+          .update({ title, updated_at: new Date().toISOString() })
+          .eq('id', initialDocument.id)
+
+        if (error) throw error
+        setSaveStatus('saved')
+      } catch (err) {
+        setSaveStatus('error')
+        toast.error('标题保存失败')
+      }
     }, 1500)
 
-    // ⏱️ 计时器 2：深度向量保存（停顿 15 秒完全没敲击键盘才触发）
-    vectorSaveTimer.current = setTimeout(() => {
-      //setSaveStatus("正在生成 AI 搜索索引...")
-      console.log('进入向量更新了');
-      
-      updateDocument(initialDocument.id, { title, content, excerpt }, true).then((res) => {
-        if (res.success) {
-          setSaveStatus("已保存")
-          console.log(2222);
-          
-          hasPendingVectorSave.current = false // 向量更新完毕，清除标记
-        } else {
-          setSaveStatus("索引生成失败")
-          toast.error("AI 索引生成失败：" + (res.error || "未知错误"))
-        }
-      })
-    }, 15000)
+    return () => { if (titleSaveTimer.current) clearTimeout(titleSaveTimer.current) }
+  }, [title])
 
-    // 清理函数：组件卸载或下次 effect 执行前清理
-    return () => {
-      if (textSaveTimer.current) clearTimeout(textSaveTimer.current)
-      if (vectorSaveTimer.current) clearTimeout(vectorSaveTimer.current)
-    }
-  }, [title, content])
-
-  // ✨ 新增：处理安全退出（拦截返回按钮）
-  const handleBack = () => {
-    if (hasPendingVectorSave.current) {
-      const excerpt = generateExcerpt(content)
-      updateDocument(initialDocument.id, { title, content, excerpt }, true).catch(err => {
-        console.error("后台向量更新失败:", err)
-      })
-      hasPendingVectorSave.current = false
-    }
+  const handleBack = async () => {
+    // ✅ 清除 localStorage 缓存，下次打开列表页强制重新拉取
+    localStorage.removeItem('all_notes_cache')
+    localStorage.removeItem('dashboard_notes_cache')
+    // ✅ 通知 Next.js 丢弃服务端缓存
+    await revalidateAfterEdit()
     router.back()
   }
+
+  const saveStatusText = {
+    saved: '已同步',
+    saving: '正在保存...',
+    error: '保存失败',
+  }[saveStatus]
 
   return (
     <div className="flex flex-col h-full max-w-5xl mx-auto w-full relative">
       {/* 顶部固定区域 */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-6 lg:pt-10 px-6 lg:px-10 pb-4 border-b border-transparent transition-all">
-        {/* 返回按钮：改用 handleBack */}
+        {/* 返回按钮 */}
         <button
           onClick={handleBack}
           className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6 text-sm w-fit"
@@ -121,31 +123,50 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
           className="w-full text-4xl font-bold border-none outline-none bg-transparent mb-6 text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
         />
 
-        {/* 用户id和保存状态 */}
+        {/* 文档 ID 和保存状态 */}
         <div className="flex items-center justify-between text-sm text-muted-foreground font-mono">
           <span>ID: {initialDocument.id.split('-')[0]}</span>
           <span className="flex items-center gap-2">
-            {saveStatus.includes("正在") && (
+            {saveStatus === 'saving' && (
               <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
             )}
-            {saveStatus}
+            {saveStatusText}
           </span>
         </div>
       </div>
 
-      {/* 正文输入区 */}
-      <div className="flex-1 w-full px-6 lg:px-10 py-6 cursor-text" onClick={() => document.querySelector<HTMLElement>('.ProseMirror')?.focus()}>
-        <Editor
-          content={content}
-          onChange={setContent}
-          uploadFn={async (file) => {
-            const formData = new FormData()
-            formData.append('file', file)
-            return await uploadImage(formData)
-          }}
-          placeholder="开始输入正文，或者输入 '/' 唤起 AI 指令..."
-          className="prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px]"
-        />
+      {/* 协同编辑器区域 */}
+      <div
+        className="flex-1 w-full px-6 lg:px-10 py-6 cursor-text"
+        onClick={() => document.querySelector<HTMLElement>('.ProseMirror')?.focus()}
+      >
+        {authToken ? (
+          <CollaborativeEditor
+            documentId={initialDocument.id}
+            authToken={authToken}
+            wsServerUrl={WS_SERVER_URL}
+            userName={userName}
+            uploadFn={async (file) => {
+              const formData = new FormData()
+              formData.append('file', file)
+              return await uploadImage(formData)
+            }}
+            onStatusChange={(status) => {
+              if (status === 'connected') setSaveStatus('saved')
+              else if (status === 'disconnected') setSaveStatus('error')
+            }}
+            placeholder="开始输入正文，多人实时协同..."
+            className="prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px]"
+          />
+        ) : (
+          // Token 加载中的骨架占位
+          <div className="animate-pulse space-y-3 pt-4">
+            <div className="h-4 bg-muted rounded w-3/4" />
+            <div className="h-4 bg-muted rounded w-full" />
+            <div className="h-4 bg-muted rounded w-5/6" />
+            <div className="h-4 bg-muted rounded w-2/3" />
+          </div>
+        )}
       </div>
     </div>
   )
