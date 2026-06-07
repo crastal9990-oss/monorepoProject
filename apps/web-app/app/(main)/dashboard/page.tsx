@@ -13,6 +13,7 @@ import {
 import { RecentNoteCard, Note } from "@/components/dashboard/recent-note-card"
 import { toast } from '@repo/ui'
 import { createNewDocument, getDocumentList, deleteDocument } from "@/api/document"
+import { createClient } from '@/utils/supabase/client'
 
 export default function DashboardPage() {
     const router = useRouter()
@@ -26,32 +27,51 @@ export default function DashboardPage() {
         const cachedNotes = localStorage.getItem('dashboard_recent_notes') // 读缓存
         if (cachedNotes) {
             setRecentNotes(JSON.parse(cachedNotes))
-            setIsLoading(false) 
+            setIsLoading(false)
         }
-        
-        getDocumentList(4)
-            .then((res) => {
-                if (res?.data) {
-                    const mappedNotes = res.data.map((doc: any) => ({
-                        id: doc.id,
-                        title: doc.title,
-                        excerpt: doc.excerpt,
-                        date: new Date(doc.updated_at).toLocaleDateString('zh-CN', {
-                            year: 'numeric', month: 'short', day: 'numeric'
-                        }),
-                        tag: doc.tags?.[0] || "默认分类"
-                    }))
 
-                    setRecentNotes(mappedNotes)
-                    localStorage.setItem('dashboard_recent_notes', JSON.stringify(mappedNotes))// 写缓存
-                }
-            })
-            .catch((err) => {
-                console.error('获取笔记列表失败', err)
-            })
-            .finally(() => {
-                setIsLoading(false)// 一开始没有缓存，关闭 loading
-            })
+        const fetchNotes = () => {
+            getDocumentList(4)
+                .then((res) => {
+                    if (res?.data) {
+                        const mappedNotes = res.data.map((doc: any) => ({
+                            id: doc.id,
+                            title: doc.title,
+                            excerpt: doc.excerpt,
+                            date: new Date(doc.updated_at).toLocaleDateString('zh-CN', {
+                                year: 'numeric', month: 'short', day: 'numeric'
+                            }),
+                            tag: doc.tags?.[0] || "默认分类"
+                        }))
+                        setRecentNotes(mappedNotes)
+                        localStorage.setItem('dashboard_recent_notes', JSON.stringify(mappedNotes)) // 写缓存
+                    }
+                })
+                .catch((err) => {
+                    console.error('获取笔记列表失败', err)
+                })
+                .finally(() => {
+                    setIsLoading(false)
+                })
+        }
+
+        fetchNotes()
+
+        // Supabase Realtime：监听 documents 表的任意变更，实时刷新列表
+        // 解决协同场景：B 编辑完保存后，A 的仪表板无需手动刷新即可看到最新内容
+        const supabase = createClient()
+        const channel = supabase
+            .channel('dashboard-page-documents')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'documents' },
+                () => { fetchNotes() }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     const handleDeleteRequest = (id: string | number) => {

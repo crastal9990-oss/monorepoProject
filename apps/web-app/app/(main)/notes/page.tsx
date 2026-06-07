@@ -6,6 +6,7 @@ import { FileText } from "lucide-react"
 import { getDocumentList } from "@/api/document"
 import { RecentNoteCard, Note } from "@/components/dashboard/recent-note-card"
 import Link from "next/link"
+import { createClient } from '@/utils/supabase/client'
 
 export default function NotesPage() {
     const [notes, setNotes] = useState<Note[]>([])
@@ -18,26 +19,46 @@ export default function NotesPage() {
             setIsLoading(false)
         }
 
-        getDocumentList()
-            .then((res) => {
-                if (res?.data) {
-                    const mappedNotes = res.data.map((doc: any) => ({
-                        id: doc.id,
-                        title: doc.title,
-                        excerpt: doc.excerpt,
-                        date: new Date(doc.updated_at).toLocaleDateString(),
-                        tag: "文档"
-                    }))
-                    setNotes(mappedNotes)
-                    localStorage.setItem('all_notes_cache', JSON.stringify(mappedNotes))
-                }
-            })
-            .catch((err) => {
-                console.error('获取笔记列表失败', err)
-            })
-            .finally(() => {
-                setIsLoading(false)
-            })
+        const fetchNotes = () => {
+            getDocumentList()
+                .then((res) => {
+                    if (res?.data) {
+                        const mappedNotes = res.data.map((doc: any) => ({
+                            id: doc.id,
+                            title: doc.title,
+                            excerpt: doc.excerpt,
+                            date: new Date(doc.updated_at).toLocaleDateString(),
+                            tag: "文档"
+                        }))
+                        setNotes(mappedNotes)
+                        localStorage.setItem('all_notes_cache', JSON.stringify(mappedNotes))
+                    }
+                })
+                .catch((err) => {
+                    console.error('获取笔记列表失败', err)
+                })
+                .finally(() => {
+                    setIsLoading(false)
+                })
+        }
+
+        fetchNotes()
+
+        // Supabase Realtime：监听 documents 表的任意变更，实时刷新列表
+        // 解决协同场景：B 编辑完保存后，A 的列表页无需手动刷新即可看到最新内容
+        const supabase = createClient()
+        const channel = supabase
+            .channel('notes-page-documents')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'documents' },
+                () => { fetchNotes() }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
     }, [])
 
     return (
