@@ -105,6 +105,11 @@
   word-break: normal;
 }
 
+/* 插入零宽字符撑开高度，确保 span 拥有正确的文本基线和相对定位参考点 */
+.collaboration-carets__caret::before {
+  content: "\200B";
+}
+
 .collaboration-carets__label {
   border-radius: 4px;
   color: #fff;

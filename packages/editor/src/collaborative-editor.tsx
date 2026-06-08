@@ -249,7 +249,7 @@ export function CollaborativeEditor({
     content: '',
     editorProps: {
       attributes: {
-        class: className || 'prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px] px-4 py-4',
+        class: className || 'prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px] px-4 pt-8 pb-4',
       },
       handlePaste,
       handleDrop,
@@ -279,13 +279,13 @@ export function CollaborativeEditor({
 
   return (
     <>
-      <div className="tiptap-wrapper relative rounded-md bg-background" onMouseLeave={closeDropdown}>
+      <div className="tiptap-wrapper relative rounded-md overflow-visible bg-background" onMouseLeave={closeDropdown}>
         {editor && (
           <BubbleMenu
             editor={editor}
             options={{ placement: 'top' }}
             shouldShow={({ from, to }) => from !== to && !editor.isActive('image')}
-            className="flex items-center gap-0.5 bg-background border border-border shadow-xl rounded-xl overflow-visible p-1.5"
+            className="flex items-center gap-0.5 bg-background border border-border shadow-xl rounded-xl overflow-visible p-1.5 z-50"
           >
             {/* 标题 */}
             <div className="relative">
