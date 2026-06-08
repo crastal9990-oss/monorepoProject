@@ -49,6 +49,7 @@ export interface CollaborativeEditorProps {
   placeholder?: string
   onStatusChange?: (status: 'connecting' | 'connected' | 'disconnected') => void
   onUsersChange?: (count: number) => void
+  editable?: boolean
 }
 
 // ─── 工具子组件 ────────────────────────────────────────────────────────────────
@@ -126,6 +127,7 @@ export function CollaborativeEditor({
   placeholder,
   onStatusChange,
   onUsersChange,
+  editable = true,
 }: CollaborativeEditorProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [linkUrl, setLinkUrl] = useState<string>('')
@@ -202,6 +204,7 @@ export function CollaborativeEditor({
 
   // ── 编辑器实例 ────────────────────────────────────────────────────────────────
   const editor = useEditor({
+    editable,
     extensions: [
       ClearMarksOnEnter,
       // ✅ 协同模式：Tiptap v3 StarterKit 不再内置 history，直接使用即可

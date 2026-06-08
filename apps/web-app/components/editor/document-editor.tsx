@@ -18,6 +18,7 @@ interface DocumentEditorProps {
     content: string | null
     share_token: string
     share_permission: string
+    user_id: string
   }
 }
 
@@ -36,6 +37,10 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   const [onlineUsers, setOnlineUsers] = useState<number>(1)
   const [authToken, setAuthToken] = useState<string | null>(null)
   const [userName, setUserName] = useState<string>('匿名用户')
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+
+  const isOwner = currentUserId === initialDocument.user_id
+  const isEditable = isOwner || initialDocument.share_permission === 'editor'
 
   // ── 获取 Supabase Session Token，用于 Hocuspocus 鉴权 ──────────────────────
   useEffect(() => {
@@ -46,6 +51,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
       if (session) {
         // 如果用户登录了，优先用 JWT
         setAuthToken(session.access_token)
+        setCurrentUserId(session.user.id)
         const displayName =
           session.user.user_metadata?.full_name ||
           session.user.email?.split('@')[0] ||
@@ -143,8 +149,9 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            disabled={!isEditable}
             placeholder="请输入标题"
-            className="flex-1 text-4xl font-bold border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 min-w-0"
+            className="flex-1 text-4xl font-bold border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 min-w-0 disabled:opacity-80 disabled:cursor-not-allowed"
           />
           {onlineUsers > 1 && (
             <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary font-medium text-sm whitespace-nowrap">
@@ -158,11 +165,16 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
         <div className="flex items-center justify-between text-sm text-muted-foreground font-mono">
           <div className="flex items-center gap-3">
             <span>ID: {initialDocument.id.split('-')[0]}</span>
-            <ShareButton
-              documentId={initialDocument.id}
-              initialPermission={initialDocument.share_permission || 'none'}
-              shareToken={initialDocument.share_token}
-            />
+            {isOwner && (
+              <ShareButton
+                documentId={initialDocument.id}
+                initialPermission={initialDocument.share_permission || 'none'}
+                shareToken={initialDocument.share_token}
+              />
+            )}
+            {!isEditable && (
+              <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground font-medium">只读模式</span>
+            )}
           </div>
           <span className="flex items-center gap-2">
             {saveStatus === 'saving' && (
@@ -184,6 +196,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
             authToken={authToken}
             wsServerUrl={WS_SERVER_URL}
             userName={userName}
+            editable={isEditable}
             onUsersChange={setOnlineUsers}
             uploadFn={async (file) => {
               const formData = new FormData()

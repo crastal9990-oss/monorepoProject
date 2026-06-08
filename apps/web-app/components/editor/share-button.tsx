@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { Share, Copy, Check, ShieldOff, Eye, Edit2 } from 'lucide-react'
+import { Share, Copy, Check, ShieldOff, Eye, Edit2, Loader2 } from 'lucide-react'
 import { updateSharePermission } from '@/api/document'
 import { toast } from '@repo/ui'
 
@@ -14,7 +14,7 @@ interface ShareButtonProps {
 export default function ShareButton({ documentId, initialPermission, shareToken }: ShareButtonProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [permission, setPermission] = useState(initialPermission)
-    const [isUpdating, setIsUpdating] = useState(false)
+    const [updatingPerm, setUpdatingPerm] = useState<'none' | 'viewer' | 'editor' | null>(null)
     const [copied, setCopied] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -36,7 +36,7 @@ export default function ShareButton({ documentId, initialPermission, shareToken 
     // 处理权限切换
     const handlePermissionChange = async (newPerm: 'none' | 'viewer' | 'editor') => {
         if (newPerm === permission) return
-        setIsUpdating(true)
+        setUpdatingPerm(newPerm)
         try {
             await updateSharePermission(documentId, newPerm)
             setPermission(newPerm)
@@ -44,7 +44,7 @@ export default function ShareButton({ documentId, initialPermission, shareToken 
         } catch (error) {
             toast.error('更新失败，请重试')
         } finally {
-            setIsUpdating(false)
+            setUpdatingPerm(null)
         }
     }
 
@@ -83,23 +83,30 @@ export default function ShareButton({ documentId, initialPermission, shareToken 
 
                     {/* 权限选择器 */}
                     <div className="flex flex-col gap-1 mb-4">
-                        {(['none', 'viewer', 'editor'] as const).map((perm) => (
-                            <button
-                                key={perm}
-                                disabled={isUpdating}
-                                onClick={() => handlePermissionChange(perm)}
-                                className={`flex items-center justify-between px-3 py-2.5 text-sm rounded-lg transition-all ${permission === perm
-                                    ? 'bg-primary/10 text-primary font-medium'
-                                    : 'hover:bg-muted text-foreground'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    {permConfig[perm].icon}
-                                    {permConfig[perm].label}
-                                </div>
-                                {permission === perm && <Check className="w-4 h-4" />}
-                            </button>
-                        ))}
+                        {(['none', 'viewer', 'editor'] as const).map((perm) => {
+                            const isCurrentUpdating = updatingPerm === perm;
+                            return (
+                                <button
+                                    key={perm}
+                                    disabled={updatingPerm !== null}
+                                    onClick={() => handlePermissionChange(perm)}
+                                    className={`flex items-center justify-between px-3 py-2.5 text-sm rounded-lg transition-all ${permission === perm
+                                        ? 'bg-primary/10 text-primary font-medium'
+                                        : 'hover:bg-muted text-foreground'
+                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        {isCurrentUpdating ? (
+                                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                        ) : (
+                                            permConfig[perm].icon
+                                        )}
+                                        {permConfig[perm].label}
+                                    </div>
+                                    {!isCurrentUpdating && permission === perm && <Check className="w-4 h-4" />}
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* 复制链接区域 (只有开启分享时才显示) */}
