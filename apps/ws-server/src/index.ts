@@ -29,17 +29,58 @@ const supabase = createClient(
 const server = new Server({
   port: parseInt(process.env.PORT || '1234'),
 
-  async onAuthenticate({ token }) {
-    if (!token) throw new Error('缺少认证 token')
+  async onAuthenticate(data: any) {
+    // 从 data 中解构出我们需要的真实属性 (Hocuspocus v4 中不再直接提供 connection 对象)
+    const { token, documentName, connectionConfig } = data
 
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-    if (error || !user) {
-      console.warn(`鉴权失败: ${error?.message}`)
-      throw new Error('鉴权失败，拒绝连接')
+    if (!token) throw new Error('拒绝访问：未提供令牌')
+
+    const isJWT = token.split('.').length === 3
+
+    if (isJWT) {
+      // ----------------------------------------------------
+      // 模式 A：正式登录用户
+      // ----------------------------------------------------
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+      if (authError || !user) throw new Error('登录凭证已失效')
+
+      console.log(`✅ 登录用户 ${user.email} 已连接`)
+      return { user, role: 'owner' }
+
+    } else {
+      // ----------------------------------------------------
+      // 模式 B：匿名访客（通过 Share Token 进来）
+      // ----------------------------------------------------
+      const { data: doc, error } = await supabase
+        .from('documents')
+        .select('share_token, share_permission')
+        .eq('id', documentName)
+        .eq('share_token', token)
+        .single()
+
+      if (error || !doc || doc.share_permission === 'none') {
+        console.warn(`🚨 越权拦截：无效的分享链接访问 ${documentName}`)
+        throw new Error('分享链接无效或已过期')
+      }
+
+      // ✨ 修复点：在 Hocuspocus v4 中，应该直接修改 connectionConfig 锁定写入权限
+      if (doc.share_permission === 'viewer') {
+        connectionConfig.readOnly = true
+      }
+
+      const guestId = `guest-${Math.random().toString(36).substring(2, 8)}`
+      const guestUser = {
+        id: guestId,
+        email: 'anonymous@guest.local',
+        user_metadata: {
+          full_name: `访客_${guestId.split('-')[1]}`
+        }
+      }
+
+      console.log(`👻 匿名访客 [${guestUser.user_metadata.full_name}] 已进入文档，权限: ${doc.share_permission}`)
+
+      return { user: guestUser, role: doc.share_permission }
     }
-
-    console.log(`✅ 用户 ${user.id} 已连接`)
-    return { user }
   },
 
   extensions: [
@@ -88,7 +129,7 @@ const server = new Server({
 
           // 把 Yjs 文档转换成 Tiptap 能认的 JSON
           const prosemirrorJson = TiptapTransformer.fromYdoc(document, 'default')
-          
+
           // 提取纯文本
           const plainTextContent = generateText(prosemirrorJson, [StarterKit as any])
           // 生成摘要 (取前80字)

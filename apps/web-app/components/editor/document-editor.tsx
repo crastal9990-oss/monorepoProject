@@ -7,6 +7,7 @@ import { CollaborativeEditor } from '@repo/editor'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
+import { useSearchParams } from 'next/navigation' //引入读取 URL 参数的钩子
 
 // 定义传入数据的类型
 interface DocumentEditorProps {
@@ -22,6 +23,10 @@ const WS_SERVER_URL = process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:1
 
 export default function DocumentEditor({ initialDocument }: DocumentEditorProps) {
   const router = useRouter()
+  // 读取 URL 里的 token，例如：/notes/123?token=abc-123
+  const searchParams = useSearchParams()
+  const shareToken = searchParams.get('token')
+
   const [title, setTitle] = useState(initialDocument.title)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [authToken, setAuthToken] = useState<string | null>(null)
@@ -34,13 +39,21 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     const fetchSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
+        // 如果用户登录了，优先用 JWT
         setAuthToken(session.access_token)
-        // 用邮箱前缀或 metadata 里的名字作为光标显示名
         const displayName =
           session.user.user_metadata?.full_name ||
           session.user.email?.split('@')[0] ||
           '匿名用户'
-        setUserName(displayName)
+        setUserName(displayName) // 用邮箱前缀或 metadata 里的名字作为光标显示名
+      } else if (shareToken) {
+        // 如果没有登录，但是 URL 里有 shareToken，就把这个当做令牌！
+        setAuthToken(shareToken)
+        setUserName(`访客_${Math.floor(Math.random() * 1000)}`) // 给个本地默认名字
+      } else {
+        // 没登录也没 token，直接弹回首页或提示无权访问
+        console.error("无权限访问")
+        router.replace('/login')
       }
     }
 
@@ -50,7 +63,8 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         setAuthToken(session.access_token)
-      } else {
+      } else if (!shareToken) {
+        // 仅在没有 shareToken 的情况下才清空 token
         setAuthToken(null)
       }
     })

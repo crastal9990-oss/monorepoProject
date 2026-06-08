@@ -58,14 +58,15 @@ export async function signup(formData: FormData) {
 }
 
 // GitHub 快捷登录/注册
-export async function signInWithGithub() {
+export async function signInWithGithub(formData: FormData) {
   const supabase = createClient()
   const origin = headers().get('origin') // 获取当前网站的域名 (例如 http://localhost:3000)
+  const next = formData.get('next') as string || '/dashboard'
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
-      redirectTo: `${origin}/auth/callback`, // 告诉 Supabase，在 GitHub 授权成功后，跳转回我们自己的回调 API
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`, // 告诉 Supabase，在 GitHub 授权成功后，跳转回我们自己的回调 API
     },
   })
 
@@ -75,14 +76,15 @@ export async function signInWithGithub() {
 }
 
 // Google 快捷登录/注册
-export async function signInWithGoogle() {
+export async function signInWithGoogle(formData: FormData) {
   const supabase = createClient()
   const origin = headers().get('origin')
+  const next = formData.get('next') as string || '/dashboard'
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
     },
   })
 
