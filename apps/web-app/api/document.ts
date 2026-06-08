@@ -160,3 +160,20 @@ export async function revalidateAfterEdit() {
     revalidatePath('/dashboard')
     return { success: true }
 }
+
+// 更新分享权限
+export async function updateSharePermission(
+    documentId: string,
+    permission: 'none' | 'viewer' | 'editor'
+) {
+    const supabase = createClient()
+    const { data, error } = await supabase
+        .from('documents')
+        .update({ share_permission: permission })
+        .eq('id', documentId)
+        .select('share_token')
+        .single()
+
+    if (error) throw error
+    return data
+}

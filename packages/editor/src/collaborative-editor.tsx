@@ -48,6 +48,7 @@ export interface CollaborativeEditorProps {
   className?: string
   placeholder?: string
   onStatusChange?: (status: 'connecting' | 'connected' | 'disconnected') => void
+  onUsersChange?: (count: number) => void
 }
 
 // ─── 工具子组件 ────────────────────────────────────────────────────────────────
@@ -124,6 +125,7 @@ export function CollaborativeEditor({
   className,
   placeholder,
   onStatusChange,
+  onUsersChange,
 }: CollaborativeEditorProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [linkUrl, setLinkUrl] = useState<string>('')
@@ -143,6 +145,11 @@ export function CollaborativeEditor({
   // ── Provider 生命周期管理 ────────────────────────────────────────────────────
   const providerRef = useRef<HocuspocusProvider | null>(null)
   const [providerReady, setProviderReady] = useState(false)
+  const onUsersChangeRef = useRef(onUsersChange)
+
+  useEffect(() => {
+    onUsersChangeRef.current = onUsersChange
+  }, [onUsersChange])
 
   useEffect(() => {
     const provider = new HocuspocusProvider({
@@ -166,6 +173,7 @@ export function CollaborativeEditor({
       onAwarenessUpdate: ({ states }) => {
         // Hocuspocus v4: states 是 StatesArray（类数组），用 length 而非 size
         setOnlineUsers(states.length)
+        onUsersChangeRef.current?.(states.length)
       },
     })
 
@@ -254,39 +262,33 @@ export function CollaborativeEditor({
   }
 
   // ─── 连接状态指示器 ───────────────────────────────────────────────────────────
-  const StatusIndicator = () => (
-    <div className="flex items-center gap-2 text-xs text-muted-foreground select-none">
-      {connectionStatus === 'connected' ? (
-        <>
-          <Wifi className="w-3.5 h-3.5 text-emerald-500" />
-          <span className="text-emerald-600 dark:text-emerald-400">已连接</span>
-          {onlineUsers > 1 && (
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-              <Users className="w-3 h-3" />
-              {onlineUsers} 人在线
-            </span>
-          )}
-        </>
-      ) : connectionStatus === 'connecting' ? (
-        <>
-          <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-          <span>连接中...</span>
-        </>
-      ) : (
-        <>
-          <WifiOff className="w-3.5 h-3.5 text-destructive" />
-          <span className="text-destructive">已断开，尝试重连...</span>
-        </>
-      )}
-    </div>
-  )
+  // const StatusIndicator = () => (
+  //   <div className="flex items-center gap-2 text-xs text-muted-foreground select-none">
+  //     {connectionStatus === 'connected' ? (
+  //       <>
+  //         <Wifi className="w-3.5 h-3.5 text-emerald-500" />
+  //         <span className="text-emerald-600 dark:text-emerald-400">已连接</span>
+  //       </>
+  //     ) : connectionStatus === 'connecting' ? (
+  //       <>
+  //         <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+  //         <span>连接中...</span>
+  //       </>
+  //     ) : (
+  //       <>
+  //         <WifiOff className="w-3.5 h-3.5 text-destructive" />
+  //         <span className="text-destructive">已断开，尝试重连...</span>
+  //       </>
+  //     )}
+  //   </div>
+  // )
 
   return (
     <>
       {/* 连接状态条 */}
-      <div className="flex items-center justify-end px-1 py-1.5 mb-1">
+      {/* <div className="flex items-center justify-end px-1 py-1.5 mb-1">
         <StatusIndicator />
-      </div>
+      </div> */}
 
       <div className="tiptap-wrapper relative rounded-md bg-background overflow-hidden" onMouseLeave={closeDropdown}>
         {editor && (

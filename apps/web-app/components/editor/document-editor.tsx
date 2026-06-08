@@ -5,9 +5,10 @@ import { uploadImage, revalidateAfterEdit } from "@/api/document"
 import { toast } from '@repo/ui'
 import { CollaborativeEditor } from '@repo/editor'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Users } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { useSearchParams } from 'next/navigation' //引入读取 URL 参数的钩子
+import ShareButton from './share-button'
 
 // 定义传入数据的类型
 interface DocumentEditorProps {
@@ -15,6 +16,8 @@ interface DocumentEditorProps {
     id: string
     title: string
     content: string | null
+    share_token: string
+    share_permission: string
   }
 }
 
@@ -29,6 +32,8 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
   const [title, setTitle] = useState(initialDocument.title)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
+  const [lastSavedAt, setLastSavedAt] = useState<Date>(new Date())
+  const [onlineUsers, setOnlineUsers] = useState<number>(1)
   const [authToken, setAuthToken] = useState<string | null>(null)
   const [userName, setUserName] = useState<string>('匿名用户')
 
@@ -91,6 +96,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
         if (error) throw error
         setSaveStatus('saved')
+        setLastSavedAt(new Date())
       } catch (err) {
         setSaveStatus('error')
         toast.error('标题保存失败')
@@ -110,7 +116,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   }
 
   const saveStatusText = {
-    saved: '已同步',
+    saved: `最近更新 ${lastSavedAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`,
     saving: '正在保存...',
     error: '保存失败',
   }[saveStatus]
@@ -119,27 +125,45 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     <div className="flex flex-col h-full max-w-5xl mx-auto w-full relative">
       {/* 顶部固定区域 */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-6 lg:pt-10 px-6 lg:px-10 pb-4 border-b border-transparent transition-all">
-        {/* 返回按钮 */}
-        <button
-          onClick={handleBack}
-          className="flex items-center text-muted-foreground hover:text-foreground transition-colors mb-6 text-sm w-fit"
-        >
-          <ChevronLeft className="w-4 h-4 mr-1" />
-          返回
-        </button>
+        {/* 顶部操作区 */}
+        <div className="flex items-center justify-between mb-6">
+          {/* 返回按钮 */}
+          <button
+            onClick={handleBack}
+            className="flex items-center text-muted-foreground hover:text-foreground transition-colors text-sm w-fit"
+          >
+            <ChevronLeft className="w-4 h-4 mr-1" />
+            返回
+          </button>
+        </div>
 
-        {/* 标题输入区 */}
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="请输入标题"
-          className="w-full text-4xl font-bold border-none outline-none bg-transparent mb-6 text-foreground placeholder:text-muted-foreground/50 focus:ring-0"
-        />
+        {/* 标题输入区和在线人数 */}
+        <div className="flex items-center gap-4 mb-6">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="请输入标题"
+            className="flex-1 text-4xl font-bold border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 min-w-0"
+          />
+          {onlineUsers > 1 && (
+            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary font-medium text-sm whitespace-nowrap">
+              <Users className="w-4 h-4" />
+              {onlineUsers} 人在线
+            </span>
+          )}
+        </div>
 
         {/* 文档 ID 和保存状态 */}
         <div className="flex items-center justify-between text-sm text-muted-foreground font-mono">
-          <span>ID: {initialDocument.id.split('-')[0]}</span>
+          <div className="flex items-center gap-3">
+            <span>ID: {initialDocument.id.split('-')[0]}</span>
+            <ShareButton
+              documentId={initialDocument.id}
+              initialPermission={initialDocument.share_permission || 'none'}
+              shareToken={initialDocument.share_token}
+            />
+          </div>
           <span className="flex items-center gap-2">
             {saveStatus === 'saving' && (
               <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
@@ -160,13 +184,17 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
             authToken={authToken}
             wsServerUrl={WS_SERVER_URL}
             userName={userName}
+            onUsersChange={setOnlineUsers}
             uploadFn={async (file) => {
               const formData = new FormData()
               formData.append('file', file)
               return await uploadImage(formData)
             }}
             onStatusChange={(status) => {
-              if (status === 'connected') setSaveStatus('saved')
+              if (status === 'connected') {
+                setSaveStatus('saved')
+                setLastSavedAt(new Date())
+              }
               else if (status === 'disconnected') setSaveStatus('error')
             }}
             placeholder="开始输入正文，多人实时协同..."
