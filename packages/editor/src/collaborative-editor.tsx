@@ -12,9 +12,11 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import Highlight from '@tiptap/extension-highlight'
 import Image from '@tiptap/extension-image'
 import Collaboration from '@tiptap/extension-collaboration'
+import CollaborationCaret from '@tiptap/extension-collaboration-caret'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import * as Y from 'yjs'
 import { useEffect, useState, useRef } from 'react'
+import './editor.css'
 import {
   Bold,
   Italic,
@@ -37,6 +39,7 @@ import {
 import './editor.css'
 import { useImageUpload } from './hooks/use-image-upload'
 import { X } from 'lucide-react'
+import './editor.css'
 
 export interface CollaborativeEditorProps {
   documentId: string
@@ -122,6 +125,7 @@ export function CollaborativeEditor({
   authToken,
   wsServerUrl,
   userName = '匿名用户',
+  userColor,
   uploadFn,
   className,
   placeholder,
@@ -145,52 +149,52 @@ export function CollaborativeEditor({
   const ydoc = ydocRef.current
 
   // ── Provider 生命周期管理 ────────────────────────────────────────────────────
-  const providerRef = useRef<HocuspocusProvider | null>(null)
-  const [providerReady, setProviderReady] = useState(false)
   const onUsersChangeRef = useRef(onUsersChange)
+  const onStatusChangeRef = useRef(onStatusChange)
 
   useEffect(() => {
     onUsersChangeRef.current = onUsersChange
-  }, [onUsersChange])
+    onStatusChangeRef.current = onStatusChange
+  })
 
+  // 1. 初始状态为 null
+  const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
+
+  // 2. 在 useEffect 中安全地创建和销毁
   useEffect(() => {
-    const provider = new HocuspocusProvider({
+    const newProvider = new HocuspocusProvider({
       url: wsServerUrl,
       name: documentId,
       document: ydoc,
       token: authToken,
       onConnect: () => {
         setConnectionStatus('connected')
-        onStatusChange?.('connected')
+        onStatusChangeRef.current?.('connected')
       },
       onDisconnect: () => {
         setConnectionStatus('disconnected')
-        onStatusChange?.('disconnected')
-      },
-      onAuthenticationFailed: () => {
-        setConnectionStatus('disconnected')
-        onStatusChange?.('disconnected')
-        console.error('Hocuspocus 鉴权失败，请检查 token')
+        onStatusChangeRef.current?.('disconnected')
       },
       onAwarenessUpdate: ({ states }) => {
-        // Hocuspocus v4: states 是 StatesArray（类数组），用 length 而非 size
         setOnlineUsers(states.length)
         onUsersChangeRef.current?.(states.length)
       },
     })
 
-    providerRef.current = provider
+    setProvider(newProvider)
 
-    // 设置 Awareness（用于在线用户感知）
-    provider.setAwarenessField('user', { name: userName })
-    setProviderReady(true)
-
+    // 只有组件真正卸载时，才销毁它
     return () => {
-      provider.destroy()
-      providerRef.current = null
-      setProviderReady(false)
+      newProvider.destroy()
     }
-  }, [documentId, authToken, wsServerUrl])
+  }, [wsServerUrl, documentId, authToken, ydoc])
+
+  // 3. 同步用户名字和颜色的逻辑，也要加个判空
+  useEffect(() => {
+    if (provider) {
+      provider.setAwarenessField('user', { name: userName, color: userColor || '#f783ac' })
+    }
+  }, [provider, userName, userColor])
 
   // ── 图片预览滚动锁 ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -212,6 +216,15 @@ export function CollaborativeEditor({
       StarterKit,
       // ✅ Yjs 协同核心
       Collaboration.configure({ document: ydoc }),
+      ...(provider ? [
+        CollaborationCaret.configure({
+          provider: provider,
+          user: {
+            name: userName,
+            color: userColor || '#f783ac',
+          },
+        })
+      ] : []),
       Placeholder.configure({
         placeholder: placeholder || '写点什么，你的团队会实时看到...',
       }),
@@ -240,7 +253,7 @@ export function CollaborativeEditor({
       },
       handlePaste,
       handleDrop,
-      handleClickOn: (_view, _pos, node) => {
+      handleClickOn: (_view: any, _pos: any, node: any) => {
         if (node.type.name === 'image') {
           setPreviewImage(node.attrs.src)
           return true
@@ -248,7 +261,7 @@ export function CollaborativeEditor({
         return false
       },
     },
-  })
+  }, [provider, userName, userColor])
 
   const toggleDropdown = (name: string) => {
     setActiveDropdown(prev => prev === name ? null : name)
@@ -264,36 +277,9 @@ export function CollaborativeEditor({
     closeDropdown()
   }
 
-  // ─── 连接状态指示器 ───────────────────────────────────────────────────────────
-  // const StatusIndicator = () => (
-  //   <div className="flex items-center gap-2 text-xs text-muted-foreground select-none">
-  //     {connectionStatus === 'connected' ? (
-  //       <>
-  //         <Wifi className="w-3.5 h-3.5 text-emerald-500" />
-  //         <span className="text-emerald-600 dark:text-emerald-400">已连接</span>
-  //       </>
-  //     ) : connectionStatus === 'connecting' ? (
-  //       <>
-  //         <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-  //         <span>连接中...</span>
-  //       </>
-  //     ) : (
-  //       <>
-  //         <WifiOff className="w-3.5 h-3.5 text-destructive" />
-  //         <span className="text-destructive">已断开，尝试重连...</span>
-  //       </>
-  //     )}
-  //   </div>
-  // )
-
   return (
     <>
-      {/* 连接状态条 */}
-      {/* <div className="flex items-center justify-end px-1 py-1.5 mb-1">
-        <StatusIndicator />
-      </div> */}
-
-      <div className="tiptap-wrapper relative rounded-md bg-background overflow-hidden" onMouseLeave={closeDropdown}>
+      <div className="tiptap-wrapper relative rounded-md bg-background" onMouseLeave={closeDropdown}>
         {editor && (
           <BubbleMenu
             editor={editor}

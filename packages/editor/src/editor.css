@@ -92,3 +92,31 @@
   outline-offset: 2px;
   transition: outline 0.1s ease-in-out;
 }
+
+/* 协同光标样式 */
+.collaboration-carets__caret {
+  border-left: 2px solid;
+  /* border-color 由插件通过 style 属性动态写入用户颜色 */
+  border-right: 0;
+  margin-left: -1px;
+  margin-right: 0;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+
+.collaboration-carets__label {
+  border-radius: 4px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  left: -1px;
+  line-height: normal;
+  padding: 0.15rem 0.4rem;
+  position: absolute;
+  top: -1.8em;
+  user-select: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+}

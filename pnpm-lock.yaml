@@ -168,9 +168,15 @@ importers:
       '@tiptap/extension-collaboration':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)(@tiptap/y-tiptap@3.0.4)(yjs@13.6.31)
+      '@tiptap/extension-collaboration-caret':
+        specifier: ^3.26.0
+        version: 3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)(@tiptap/y-tiptap@3.0.4)
       '@tiptap/extension-color':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/extension-text-style@3.26.0)
+      '@tiptap/extension-document':
+        specifier: ^3.26.0
+        version: 3.26.0(@tiptap/core@3.26.0)
       '@tiptap/extension-highlight':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/core@3.26.0)
@@ -180,9 +186,15 @@ importers:
       '@tiptap/extension-link':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)
+      '@tiptap/extension-paragraph':
+        specifier: ^3.26.0
+        version: 3.26.0(@tiptap/core@3.26.0)
       '@tiptap/extension-placeholder':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/extensions@3.26.0)
+      '@tiptap/extension-text':
+        specifier: ^3.26.0
+        version: 3.26.0(@tiptap/core@3.26.0)
       '@tiptap/extension-text-align':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/core@3.26.0)
@@ -207,6 +219,9 @@ importers:
       lucide-react:
         specifier: ^1.17.0
         version: 1.17.0(react@18.2.0)
+      y-protocols:
+        specifier: ^1.0.7
+        version: 1.0.7(yjs@13.6.31)
       yjs:
         specifier: ^13.6.31
         version: 13.6.31
@@ -2108,6 +2123,18 @@ packages:
       '@tiptap/core': 3.26.0(@tiptap/pm@3.26.0)
     dev: false
 
+  /@tiptap/extension-collaboration-caret@3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)(@tiptap/y-tiptap@3.0.4):
+    resolution: {integrity: sha512-6OIlXWPpMrauwYMxPDKBVDdLeVheqI0QEjy5YHAQ1nHeNHFbSOYi2P/H436zGjv93Zc2wDSZDclLyMsU8QMhyg==}
+    peerDependencies:
+      '@tiptap/core': 3.26.0
+      '@tiptap/pm': 3.26.0
+      '@tiptap/y-tiptap': ^3.0.2
+    dependencies:
+      '@tiptap/core': 3.26.0(@tiptap/pm@3.26.0)
+      '@tiptap/pm': 3.26.0
+      '@tiptap/y-tiptap': 3.0.4(prosemirror-model@1.25.7)(prosemirror-state@1.4.4)(prosemirror-view@1.41.8)(y-protocols@1.0.7)(yjs@13.6.31)
+    dev: false
+
   /@tiptap/extension-collaboration@3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)(@tiptap/y-tiptap@3.0.4)(yjs@13.6.31):
     resolution: {integrity: sha512-zSNsjznGSpYC9CYg3acvLOt36ldjs4dA2qEsh7jaONqo6sKJo76UuZAN0N38V8qnH8WtAWes4uGmwWcWcRg90A==}
     peerDependencies:
@@ -2128,14 +2155,6 @@ packages:
       '@tiptap/extension-text-style': 3.26.0
     dependencies:
       '@tiptap/extension-text-style': 3.26.0(@tiptap/core@3.26.0)
-    dev: false
-
-  /@tiptap/extension-document@3.24.0(@tiptap/core@3.26.0):
-    resolution: {integrity: sha512-yxgM3+yXy2XZzEwH43y2Kp8D1BkblxEWLXqo0YCoAKtxyKCcEaT8kdlf70kS7D0+VSzYU4D0iN7VdQIYHcL2mA==}
-    peerDependencies:
-      '@tiptap/core': 3.24.0
-    dependencies:
-      '@tiptap/core': 3.26.0(@tiptap/pm@3.26.0)
     dev: false
 
   /@tiptap/extension-document@3.26.0(@tiptap/core@3.26.0):
@@ -2355,14 +2374,6 @@ packages:
       '@tiptap/extension-list': 3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)
     dev: false
 
-  /@tiptap/extension-paragraph@3.24.0(@tiptap/core@3.26.0):
-    resolution: {integrity: sha512-wD06aB6hO7LgcrlhGiw7I64k2tus9kNoICX5R+UecBSB1DVJdzKvXoXL2kPNv4DqYvljHdkIeK/OpuOTQd6MJA==}
-    peerDependencies:
-      '@tiptap/core': 3.24.0
-    dependencies:
-      '@tiptap/core': 3.26.0(@tiptap/pm@3.26.0)
-    dev: false
-
   /@tiptap/extension-paragraph@3.26.0(@tiptap/core@3.26.0):
     resolution: {integrity: sha512-h8fYLikg4qN39IghQ1y9g+zzUsgxBpDi5YS3IZbWoxWYYx1YqLL8nAvOiPr7Us14aQ0TjA2/xY7zqmyf29rX1A==}
     peerDependencies:
@@ -2407,14 +2418,6 @@ packages:
     resolution: {integrity: sha512-4IeIdiubF5/Em9AodaLkCKUNwkQaK3KuwnneXS61x4Yoyr0zK21i3kZAFK7ils7jUwSrRdGdM1FglBnB4tK8nA==}
     peerDependencies:
       '@tiptap/core': 3.26.0
-    dependencies:
-      '@tiptap/core': 3.26.0(@tiptap/pm@3.26.0)
-    dev: false
-
-  /@tiptap/extension-text@3.24.0(@tiptap/core@3.26.0):
-    resolution: {integrity: sha512-Im7keLPEihxm3+LyF+drYCoaOY5hlq35lvHAp/el6M8pJ/scts88HrYpdR1Yc4BtpZBIhfHSyWgPaupI4qwdeg==}
-    peerDependencies:
-      '@tiptap/core': 3.24.0
     dependencies:
       '@tiptap/core': 3.26.0(@tiptap/pm@3.26.0)
     dev: false
@@ -2508,7 +2511,7 @@ packages:
       '@tiptap/extension-bullet-list': 3.24.0(@tiptap/extension-list@3.24.0)
       '@tiptap/extension-code': 3.24.0(@tiptap/core@3.26.0)
       '@tiptap/extension-code-block': 3.24.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)
-      '@tiptap/extension-document': 3.24.0(@tiptap/core@3.26.0)
+      '@tiptap/extension-document': 3.26.0(@tiptap/core@3.26.0)
       '@tiptap/extension-dropcursor': 3.24.0(@tiptap/extensions@3.24.0)
       '@tiptap/extension-gapcursor': 3.24.0(@tiptap/extensions@3.24.0)
       '@tiptap/extension-hard-break': 3.24.0(@tiptap/core@3.26.0)
@@ -2520,9 +2523,9 @@ packages:
       '@tiptap/extension-list-item': 3.24.0(@tiptap/extension-list@3.24.0)
       '@tiptap/extension-list-keymap': 3.24.0(@tiptap/extension-list@3.24.0)
       '@tiptap/extension-ordered-list': 3.24.0(@tiptap/extension-list@3.24.0)
-      '@tiptap/extension-paragraph': 3.24.0(@tiptap/core@3.26.0)
+      '@tiptap/extension-paragraph': 3.26.0(@tiptap/core@3.26.0)
       '@tiptap/extension-strike': 3.24.0(@tiptap/core@3.26.0)
-      '@tiptap/extension-text': 3.24.0(@tiptap/core@3.26.0)
+      '@tiptap/extension-text': 3.26.0(@tiptap/core@3.26.0)
       '@tiptap/extension-underline': 3.26.0(@tiptap/core@3.26.0)
       '@tiptap/extensions': 3.24.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)
       '@tiptap/pm': 3.26.0
