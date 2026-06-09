@@ -117,7 +117,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     localStorage.removeItem('all_notes_cache')
     localStorage.removeItem('dashboard_notes_cache')
     // ✅ 通知 Next.js 丢弃服务端缓存
-    await revalidateAfterEdit()
+    revalidateAfterEdit()
     router.back()
   }
 
