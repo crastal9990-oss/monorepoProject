@@ -9,11 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.68",
     "@hocuspocus/provider": "^4.1.0",
     "@repo/editor": "workspace:*",
     "@repo/ui": "workspace:^",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.2",
+    "ai": "^6.0.198",
     "lucide-react": "^1.17.0",
     "next": "^14.0.0",
     "openai": "^6.42.0",

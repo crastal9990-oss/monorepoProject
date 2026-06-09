@@ -34,12 +34,14 @@ import {
   Eraser,
   Wifi,
   WifiOff,
-  Users
+  Users,
+  WandSparkles, Loader2 // 🌟 新增 AI 相关图标
 } from 'lucide-react'
 import './editor.css'
 import { useImageUpload } from './hooks/use-image-upload'
 import { X } from 'lucide-react'
 import './editor.css'
+import { toast } from '@repo/ui'
 
 export interface CollaborativeEditorProps {
   documentId: string
@@ -141,6 +143,7 @@ export function CollaborativeEditor({
 
   const { handlePaste, handleDrop } = useImageUpload(uploadFn)
 
+  const [isAIGenerating, setIsAIGenerating] = useState(false) // 记录 AI 是否正在流式输出
   // 创建 Yjs 文档（只创建一次）
   const ydocRef = useRef<Y.Doc | null>(null)
   if (!ydocRef.current) {
@@ -285,6 +288,61 @@ export function CollaborativeEditor({
       editor?.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run()
     }
     closeDropdown()
+  }
+
+  // 🌟 核心新增：AI 流式替换逻辑
+  const handleAIAction = async (actionType: string) => {
+    if (!editor) return
+
+    const { from, to } = editor.state.selection
+    const selectedText = editor.state.doc.textBetween(from, to, ' ')
+
+    if (!selectedText) return
+
+    closeDropdown()
+    setIsAIGenerating(true)
+    editor.setEditable(false)
+
+    try {
+      // 1. 发起真实的网络请求（此时保留原文本，不提前删除）
+      const response = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: selectedText, action: actionType })
+      })
+
+      if (!response.ok) throw new Error('网络请求失败')
+
+      // 2. 核心：解析底层的 ReadableStream
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder('utf-8')
+      let isFirstChunk = true
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value, { stream: true })
+          if (chunk) {
+            // 当接收到真正的第一段数据包时，才把原文删掉
+            if (isFirstChunk) {
+              editor.chain().focus().deleteRange({ from, to }).insertContent(chunk).run()
+              isFirstChunk = false
+            } else {
+              // 后续的数据包直接在光标处追加
+              editor.commands.insertContent(chunk)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      toast.error('AI 生成失败，请重试')
+      console.error(error)
+    } finally {
+      editor.setEditable(true)
+      setIsAIGenerating(false)
+    }
   }
 
   return (
@@ -484,6 +542,41 @@ export function CollaborativeEditor({
             <MenuButton onClick={() => editor.chain().focus().unsetAllMarks().run()} isActive={false} title="清除所有格式">
               <Eraser className="w-4 h-4" />
             </MenuButton>
+
+            {/* 在 BubbleMenu 中增加一个 AI 专属下拉菜单 */}
+            <div className="relative">
+              <Tooltip text="AI 智能助手">
+                <button
+                  onMouseDown={(e) => { e.preventDefault(); toggleDropdown('ai'); }}
+                  disabled={isAIGenerating}
+                  className={`flex items-center gap-1 p-2 text-sm rounded-md transition-all ${isAIGenerating
+                    ? 'text-purple-400 cursor-not-allowed'
+                    : 'text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/30'
+                    }`}
+                >
+                  {/* 如果正在生成，显示旋转的 Loading 图标 */}
+                  {isAIGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <WandSparkles className="w-4 h-4" />}
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </button>
+              </Tooltip>
+
+              {activeDropdown === 'ai' && (
+                <div className="absolute top-full left-0 mt-1 bg-background border border-border shadow-lg rounded-lg py-1 flex flex-col w-36 z-50 overflow-hidden">
+                  <button onMouseDown={(e) => { e.preventDefault(); handleAIAction('improve'); }} className="px-4 py-2 text-left text-sm hover:bg-muted text-foreground transition-colors flex items-center gap-2">
+                    ✨ 智能润色
+                  </button>
+                  <button onMouseDown={(e) => { e.preventDefault(); handleAIAction('expand'); }} className="px-4 py-2 text-left text-sm hover:bg-muted text-foreground transition-colors flex items-center gap-2">
+                    📝 扩写段落
+                  </button>
+                  <button onMouseDown={(e) => { e.preventDefault(); handleAIAction('academic'); }} className="px-4 py-2 text-left text-sm hover:bg-muted text-foreground transition-colors flex items-center gap-2">
+                    🎓 更学术/专业
+                  </button>
+                  <button onMouseDown={(e) => { e.preventDefault(); handleAIAction('fix'); }} className="px-4 py-2 text-left text-sm hover:bg-muted text-foreground transition-colors flex items-center gap-2">
+                    ✅ 修复语法
+                  </button>
+                </div>
+              )}
+            </div>
           </BubbleMenu>
         )}
 
