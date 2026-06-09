@@ -5,14 +5,14 @@ import { useState, useEffect, useTransition } from "react" // 🌟 新增 useSta
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Sparkles, FilePlus, Import, ArrowRight, Loader2, X } from "lucide-react"
-import { 
+import {
     Button, Card, CardContent, CardHeader, CardTitle,
     AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
     AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction
 } from "@repo/ui"
 import { RecentNoteCard, Note } from "@/components/dashboard/recent-note-card"
 import { toast } from '@repo/ui'
-import { createNewDocument, getDocumentList, deleteDocument } from "@/api/document"
+import { createNewDocument, getDocumentList, deleteDocument } from "@/actions/document"
 import { createClient } from '@/utils/supabase/client'
 
 export default function DashboardPage() {
@@ -85,7 +85,7 @@ export default function DashboardPage() {
             const res = await deleteDocument(String(noteToDelete.id));
             if (res?.success) {
                 toast.success('笔记已删除');
-                
+
                 // 删除成功后重新请求最新的数据
                 const listRes = await getDocumentList(4);
                 if (listRes?.data) {

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { Trash2 } from "lucide-react"
-import { getTrashedDocumentList } from "@/api/document"
+import { getTrashedDocumentList } from "@/actions/document"
 import { RecentNoteCard, Note } from "@/components/dashboard/recent-note-card"
 
 export default function TrashPage() {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { uploadImage, revalidateAfterEdit } from "@/api/document"
+import { uploadImage, revalidateAfterEdit } from "@/actions/document"
 import { toast } from '@repo/ui'
 import { CollaborativeEditor } from '@repo/editor'
 import { useRouter } from 'next/navigation'

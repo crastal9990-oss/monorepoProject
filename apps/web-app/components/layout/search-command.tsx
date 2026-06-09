@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Search, FileText, Loader2, X, Sparkles, ArrowRight } from "lucide-react"
-import { searchDocuments } from "@/api/search"
+import { searchDocuments } from "@/actions/search"
 import { useRouter } from "next/navigation"
 
 interface SearchResult {
@@ -216,17 +216,15 @@ export function SearchCommand() {
                                         ref={(el) => { resultRefs.current[index] = el }}
                                         onClick={() => navigateToResult(result)}
                                         onMouseEnter={() => setActiveIndex(index)}
-                                        className={`w-full text-left px-2.5 py-2.5 rounded-lg flex items-start gap-2.5 transition-all duration-150 ${
-                                            index === activeIndex
-                                                ? "bg-accent text-accent-foreground"
-                                                : "hover:bg-muted/50"
-                                        }`}
+                                        className={`w-full text-left px-2.5 py-2.5 rounded-lg flex items-start gap-2.5 transition-all duration-150 ${index === activeIndex
+                                            ? "bg-accent text-accent-foreground"
+                                            : "hover:bg-muted/50"
+                                            }`}
                                     >
-                                        <div className={`shrink-0 mt-0.5 p-1 rounded-md transition-colors ${
-                                            index === activeIndex
-                                                ? "bg-primary/15 text-primary"
-                                                : "bg-muted text-muted-foreground"
-                                        }`}>
+                                        <div className={`shrink-0 mt-0.5 p-1 rounded-md transition-colors ${index === activeIndex
+                                            ? "bg-primary/15 text-primary"
+                                            : "bg-muted text-muted-foreground"
+                                            }`}>
                                             <FileText className="h-3.5 w-3.5" />
                                         </div>
                                         <div className="flex-1 min-w-0">
@@ -239,11 +237,10 @@ export function SearchCommand() {
                                                 </p>
                                             )}
                                         </div>
-                                        <ArrowRight className={`h-3.5 w-3.5 shrink-0 mt-1 transition-all ${
-                                            index === activeIndex
+                                        <ArrowRight className={`h-3.5 w-3.5 shrink-0 mt-1 transition-all ${index === activeIndex
                                                 ? "opacity-100 text-primary translate-x-0"
                                                 : "opacity-0 -translate-x-2"
-                                        }`} />
+                                            }`} />
                                     </button>
                                 ))}
                             </div>

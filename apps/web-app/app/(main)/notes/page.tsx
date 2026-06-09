@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useState, useEffect } from "react"
 import { FileText } from "lucide-react"
-import { getDocumentList } from "@/api/document"
+import { getDocumentList } from "@/actions/document"
 import { RecentNoteCard, Note } from "@/components/dashboard/recent-note-card"
 import Link from "next/link"
 import { createClient } from '@/utils/supabase/client'
@@ -77,7 +77,7 @@ export default function NotesPage() {
             ) : notes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground animate-in fade-in zoom-in duration-500 mt-20">
                     <FileText className="h-16 w-16 mb-4 text-muted-foreground/50" />
-                    <p className="mt-2 text-sm text-center">这里是你的所有文档库<br/>还没有任何文档，快去创建一个吧！</p>
+                    <p className="mt-2 text-sm text-center">这里是你的所有文档库<br />还没有任何文档，快去创建一个吧！</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

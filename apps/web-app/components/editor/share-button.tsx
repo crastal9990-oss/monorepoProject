@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Share, Copy, Check, ShieldOff, Eye, Edit2, Loader2 } from 'lucide-react'
-import { updateSharePermission } from '@/api/document'
+import { updateSharePermission } from '@/actions/document'
 import { toast } from '@repo/ui'
 
 interface ShareButtonProps {

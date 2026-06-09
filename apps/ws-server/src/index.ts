@@ -2,12 +2,41 @@ import { Server } from '@hocuspocus/server'
 import { Database } from '@hocuspocus/extension-database'
 import { createClient } from '@supabase/supabase-js'
 import { TiptapTransformer } from '@hocuspocus/transformer'
-import { generateText } from '@tiptap/core'
+import { generateText as tiptapGenerateText } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import * as Y from 'yjs'
 import WebSocket from 'ws'
 import 'dotenv/config'
+import { openai } from '@ai-sdk/openai'
+import { generateText } from 'ai'
 
+// 内存节流记录：documentId -> 上次生成摘要的时间戳
+const lastExcerptGenerationTime = new Map<string, number>()
+const EXCERPT_GENERATION_INTERVAL = 3 * 60 * 1000 // 3 分钟
+
+// 异步 AI 生成任务
+async function generateAISummaryAndSave(documentId: string, plainText: string) {
+  try {
+    if (plainText.length < 50) {
+      // 如果内容太少，给一个默认提示，并更新到库
+      const defaultExcerpt = plainText.replace(/\n+/g, ' ').trim().substring(0, 80) || '无内容'
+      await supabase.from('documents').update({ excerpt: defaultExcerpt }).eq('id', documentId)
+      return
+    }
+
+    const { text } = await generateText({
+      model: openai('qwen-plus'),
+      system: "你是一个专业的资深编辑。请仔细阅读用户提供的文档正文，提取出最核心的思想或结论，生成一段不超过 80 个字的极简摘要，用于首页信息流卡片展示。绝对不要包含任何解释性的话语（如“这段文字讲了...”）、Markdown 标记或标题，直接输出纯文本摘要。",
+      prompt: plainText,
+      temperature: 0.3,
+    })
+
+    console.log(`🤖 AI 成功为文档 [${documentId}] 生成摘要:`, text)
+    await supabase.from('documents').update({ excerpt: text }).eq('id', documentId)
+  } catch (error) {
+    console.error(`AI 摘要生成失败 [${documentId}]:`, error)
+  }
+}
 // 环境变量校验
 const requiredEnvVars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
 for (const envVar of requiredEnvVars) {
@@ -131,18 +160,27 @@ const server = new Server({
           const prosemirrorJson = TiptapTransformer.fromYdoc(document, 'default')
 
           // 提取纯文本
-          const plainTextContent = generateText(prosemirrorJson, [StarterKit as any])
-          // 生成摘要 (取前80字)
-          const excerpt = plainTextContent.replace(/\n+/g, ' ').trim().substring(0, 80) + (plainTextContent.length > 80 ? '...' : '')
+          const plainTextContent = tiptapGenerateText(prosemirrorJson, [StarterKit as any])
 
-          // 更新数据库，保存二进制状态、JSON 内容、纯文本和摘要
+          // 异步触发 AI 摘要 (火控节流)
+          const now = Date.now()
+          const lastTime = lastExcerptGenerationTime.get(documentName) || 0
+
+          if (now - lastTime > EXCERPT_GENERATION_INTERVAL) {
+            // 更新时间戳
+            lastExcerptGenerationTime.set(documentName, now)
+
+            // 抛出后台任务，不加 await，不阻塞主流程
+            generateAISummaryAndSave(documentName, plainTextContent)
+          }
+
+          // 更新数据库，保存二进制状态、JSON 内容、纯文本 (摘要字段由 AI 异步更新)
           const { error } = await supabase
             .from('documents')
             .update({
               yjs_state: hexString,
-              content: prosemirrorJson, // ✅ 修复：直接存 JSON，不在 Node 环境强行生成 HTML 导致 window is not defined
+              content: prosemirrorJson,
               plain_content: plainTextContent,
-              excerpt: excerpt || '无内容',
               updated_at: new Date().toISOString(),
             })
             .eq('id', documentName)

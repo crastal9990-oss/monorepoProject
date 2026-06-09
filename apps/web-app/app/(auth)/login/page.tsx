@@ -8,7 +8,7 @@ import * as z from "zod"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 
-import { login, signInWithGithub, signInWithGoogle } from "@/api/login"
+import { login, signInWithGithub, signInWithGoogle } from "@/actions/login"
 import { Button, Input, Label, Form, FormControl, FormField, FormItem, FormLabel, FormMessage, toast } from "@repo/ui"
 
 // 定义 Zod 校验规则 (Schema)
