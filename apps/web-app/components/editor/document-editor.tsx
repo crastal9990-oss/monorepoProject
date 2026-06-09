@@ -203,12 +203,16 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
               formData.append('file', file)
               return await uploadImage(formData)
             }}
-            onStatusChange={(status) => {
+            onStatusChange={(status, time) => {
               if (status === 'connected') {
                 setSaveStatus('saved')
                 setLastSavedAt(new Date())
               }
               else if (status === 'disconnected') setSaveStatus('error')
+              else if (status === 'saved') {
+                setSaveStatus('saved')
+                if (time) setLastSavedAt(new Date(time))
+              }
             }}
             placeholder="开始输入正文，多人实时协同..."
             className="prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px]"

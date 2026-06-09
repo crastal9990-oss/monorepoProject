@@ -118,7 +118,7 @@ const server = new Server({
       },
 
       // 2. 存储数据：将 Yjs 状态转回 Hex 字符串存入数据库
-      store: async ({ documentName, document }) => {
+      store: async ({ documentName, document, instance }) => {
         try {
           // 生成 Yjs 二进制快照
           const state = Y.encodeStateAsUpdate(document)
@@ -151,6 +151,10 @@ const server = new Server({
             console.error(`存储文档失败: ${error.message}`)
           } else {
             console.log(`💾 文档 ${documentName} 已保存，内容已同步`)
+            const doc = instance.documents.get(documentName)
+            if (doc) {
+              doc.broadcastStateless(JSON.stringify({ type: 'document-saved', time: new Date().toISOString() }))
+            }
           }
         } catch (error) {
           console.error(`store 回调异常: ${error}`)

@@ -50,7 +50,7 @@ export interface CollaborativeEditorProps {
   uploadFn?: (file: File) => Promise<string | null>
   className?: string
   placeholder?: string
-  onStatusChange?: (status: 'connecting' | 'connected' | 'disconnected') => void
+  onStatusChange?: (status: 'connecting' | 'connected' | 'disconnected' | 'saved', time?: string) => void
   onUsersChange?: (count: number) => void
   editable?: boolean
 }
@@ -174,6 +174,16 @@ export function CollaborativeEditor({
       onDisconnect: () => {
         setConnectionStatus('disconnected')
         onStatusChangeRef.current?.('disconnected')
+      },
+      onStateless: ({ payload }) => {
+        try {
+          const msg = typeof payload === 'string' ? JSON.parse(payload) : payload
+          if (msg.type === 'document-saved') {
+            onStatusChangeRef.current?.('saved', msg.time)
+          }
+        } catch (e) {
+          console.error('Failed to parse stateless message', e)
+        }
       },
       onAwarenessUpdate: ({ states }) => {
         setOnlineUsers(states.length)
