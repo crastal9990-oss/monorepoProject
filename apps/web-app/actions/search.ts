@@ -6,7 +6,7 @@ import OpenAI from 'openai';
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
-    baseURL: process.env.OPENAI_BASE_URL 
+    baseURL: process.env.OPENAI_BASE_URL
 });
 
 // 提取纯文本的占位函数 (你需要根据你的编辑器格式实现)
@@ -64,10 +64,10 @@ export async function updateDocument(
 
             if (chunks.length > 0) {
                 const embeddingResponse = await openai.embeddings.create({
-                    model: 'embedding-3',
+                    model: 'text-embedding-v3',
                     input: chunks,
                     encoding_format: 'float',
-                    dimensions: 512
+                    dimensions: 1024
                 } as any);
 
                 const embeddingsToInsert = embeddingResponse.data.map((item, index) => ({
@@ -111,10 +111,10 @@ export async function searchDocuments(query: string) {
     try {
         // 1. 先将搜索词向量化
         const embeddingResponse = await openai.embeddings.create({
-            model: 'embedding-3',
+            model: 'text-embedding-v3',
             input: query.trim(),
             encoding_format: 'float',
-            dimensions: 512
+            dimensions: 1024
         } as any);
 
         const queryEmbedding = embeddingResponse.data[0].embedding;

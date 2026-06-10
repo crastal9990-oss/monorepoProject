@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import DocumentEditor from "@/components/editor/document-editor"
 import { createClient as createServerClient } from '@/utils/supabase/server' // 你原本的服务端客户端
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { AiAssistantDrawer } from "@/components/layout/ai"
 
 export default async function EditorPage({
     params,
@@ -49,5 +50,12 @@ export default async function EditorPage({
     }
 
     // 只需要把查到的真实数据，当作 props 喂给子组件即可！
-    return <DocumentEditor initialDocument={document} />
+    return (
+        <div className="relative h-full">
+            <DocumentEditor initialDocument={document} />
+            <div className="fixed bottom-8 right-8 z-50">
+                <AiAssistantDrawer />
+            </div>
+        </div>
+    )
 }

@@ -70,7 +70,7 @@ export default function DashboardPage() {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'documents' },
-                () => { 
+                () => {
                     // 防抖处理：500ms 内如果有多次数据库更新，只拉取一次列表
                     if (fetchTimer) clearTimeout(fetchTimer)
                     fetchTimer = setTimeout(() => fetchNotes(), 500)
@@ -127,7 +127,7 @@ export default function DashboardPage() {
         try {
             const supabase = createClient()
             const { data: { user } } = await supabase.auth.getUser()
-            
+
             if (!user) {
                 toast.error('未登录或登录状态已过期')
                 setTimeout(() => window.location.reload(), 1500)

@@ -12,3 +12,5 @@ export * from "./components/skeleton"
 export * from "./components/sheet"
 export * from "./components/tooltip"
 export * from "./components/alert-dialog"
+export * from "./components/drawer"
+export * from './components/scroll-area'
