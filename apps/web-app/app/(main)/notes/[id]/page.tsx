@@ -2,7 +2,6 @@ import { notFound } from "next/navigation"
 import DocumentEditor from "@/components/editor/document-editor"
 import { createClient as createServerClient } from '@/utils/supabase/server' // 你原本的服务端客户端
 import { createClient as createAdminClient } from '@supabase/supabase-js'
-import { AiAssistantDrawer } from "@/components/layout/ai"
 
 export default async function EditorPage({
     params,
@@ -53,9 +52,6 @@ export default async function EditorPage({
     return (
         <div className="relative h-full">
             <DocumentEditor initialDocument={document} />
-            <div className="fixed bottom-8 right-8 z-50">
-                <AiAssistantDrawer />
-            </div>
         </div>
     )
 }

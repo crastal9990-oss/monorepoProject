@@ -5,10 +5,11 @@ import { uploadImage, revalidateAfterEdit } from "@/actions/document"
 import { toast } from '@repo/ui'
 import { CollaborativeEditor } from '@repo/editor'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Users } from 'lucide-react'
+import { ChevronLeft, Users, Sparkles } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { useSearchParams } from 'next/navigation' //引入读取 URL 参数的钩子
 import ShareButton from './share-button'
+import { AiAssistantPanel } from '@/components/layout/ai'
 
 // 定义传入数据的类型
 interface DocumentEditorProps {
@@ -38,6 +39,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   const [authToken, setAuthToken] = useState<string | null>(null)
   const [userName, setUserName] = useState<string>('匿名用户')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [isAiOpen, setIsAiOpen] = useState(false)
 
   const isOwner = currentUserId === initialDocument.user_id
   const isEditable = isOwner || initialDocument.share_permission === 'editor'
@@ -128,105 +130,126 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   }[saveStatus]
 
   return (
-    <div className="flex flex-col h-full max-w-5xl mx-auto w-full relative">
-      {/* 顶部固定区域 */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-6 lg:pt-10 px-6 lg:px-10 pb-4 border-b border-transparent transition-all">
-        {/* 顶部操作区 */}
-        <div className="flex items-center justify-between mb-6">
-          {/* 返回按钮 */}
-          <button
-            onClick={handleBack}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors text-sm w-fit"
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            返回
-          </button>
-        </div>
+    <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-60px)] w-full overflow-hidden bg-background">
+      {/* 左侧编辑器区域 */}
+      <div className="flex-1 flex flex-col h-full overflow-y-auto min-w-0 transition-all duration-300">
+        <div className="flex flex-col h-full max-w-5xl mx-auto w-full relative">
+          {/* 顶部固定区域 */}
+          <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-6 lg:pt-10 px-6 lg:px-10 pb-4 border-b border-transparent transition-all">
+            {/* 顶部操作区 */}
+            <div className="flex items-center justify-between mb-6">
+              {/* 返回按钮 */}
+              <button
+                onClick={handleBack}
+                className="flex items-center text-muted-foreground hover:text-foreground transition-colors text-sm w-fit"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                返回
+              </button>
 
-        {/* 标题输入区和在线人数 */}
-        <div className="flex items-center gap-4 mb-6">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            disabled={!isEditable}
-            placeholder="请输入标题"
-            className="flex-1 text-4xl font-bold border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 min-w-0 disabled:opacity-80 disabled:cursor-not-allowed"
-          />
-          {onlineUsers > 1 && (
-            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary font-medium text-sm whitespace-nowrap">
-              <Users className="w-4 h-4" />
-              {onlineUsers} 人在线
-            </span>
-          )}
-        </div>
+              {/* AI 助手触发按钮 */}
+              <button
+                onClick={() => setIsAiOpen(!isAiOpen)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all shadow-sm ${
+                  isAiOpen 
+                    ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/95' 
+                    : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border/80'
+                }`}
+              >
+                <Sparkles className={`h-3.5 w-3.5 ${isAiOpen ? 'text-amber-300' : 'text-amber-500'}`} />
+                AI 助手
+              </button>
+            </div>
 
-        {/* 文档 ID 和保存状态 */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground font-mono">
-          <div className="flex items-center gap-3">
-            <span>ID: {initialDocument.id.split('-')[0]}</span>
-            {isOwner && (
-              <ShareButton
-                documentId={initialDocument.id}
-                initialPermission={initialDocument.share_permission || 'none'}
-                shareToken={initialDocument.share_token}
+            {/* 标题输入区和在线人数 */}
+            <div className="flex items-center gap-4 mb-6">
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                disabled={!isEditable}
+                placeholder="请输入标题"
+                className="flex-1 text-4xl font-bold border-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground/50 focus:ring-0 min-w-0 disabled:opacity-80 disabled:cursor-not-allowed"
               />
-            )}
-            {!isEditable && (
-              <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground font-medium">只读模式</span>
+              {onlineUsers > 1 && (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary font-medium text-sm whitespace-nowrap">
+                  <Users className="w-4 h-4" />
+                  {onlineUsers} 人在线
+                </span>
+              )}
+            </div>
+
+            {/* 文档 ID 和保存状态 */}
+            <div className="flex items-center justify-between text-sm text-muted-foreground font-mono">
+              <div className="flex items-center gap-3">
+                <span>ID: {initialDocument.id.split('-')[0]}</span>
+                {isOwner && (
+                  <ShareButton
+                    documentId={initialDocument.id}
+                    initialPermission={initialDocument.share_permission || 'none'}
+                    shareToken={initialDocument.share_token}
+                  />
+                )}
+                {!isEditable && (
+                  <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground font-medium">只读模式</span>
+                )}
+              </div>
+              <span className="flex items-center gap-2">
+                {saveStatus === 'saving' && (
+                  <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                )}
+                {saveStatusText}
+              </span>
+            </div>
+          </div>
+
+          {/* 协同编辑器区域 */}
+          <div
+            className="flex-1 w-full px-6 lg:px-10 py-6 cursor-text"
+            onClick={() => document.querySelector<HTMLElement>('.ProseMirror')?.focus()}
+          >
+            {authToken ? (
+              <CollaborativeEditor
+                documentId={initialDocument.id}
+                authToken={authToken}
+                wsServerUrl={WS_SERVER_URL}
+                userName={userName}
+                editable={isEditable}
+                onUsersChange={setOnlineUsers}
+                uploadFn={async (file) => {
+                  const formData = new FormData()
+                  formData.append('file', file)
+                  return await uploadImage(formData)
+                }}
+                onStatusChange={(status, time) => {
+                  if (status === 'connected') {
+                    setSaveStatus('saved')
+                    setLastSavedAt(new Date())
+                  }
+                  else if (status === 'disconnected') setSaveStatus('error')
+                  else if (status === 'saved') {
+                    setSaveStatus('saved')
+                    if (time) setLastSavedAt(new Date(time))
+                  }
+                }}
+                placeholder="开始输入正文，多人实时协同..."
+                className="prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px]"
+              />
+            ) : (
+              // Token 加载中的骨架占位
+              <div className="animate-pulse space-y-3 pt-4">
+                <div className="h-4 bg-muted rounded w-3/4" />
+                <div className="h-4 bg-muted rounded w-full" />
+                <div className="h-4 bg-muted rounded w-5/6" />
+                <div className="h-4 bg-muted rounded w-2/3" />
+              </div>
             )}
           </div>
-          <span className="flex items-center gap-2">
-            {saveStatus === 'saving' && (
-              <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-            )}
-            {saveStatusText}
-          </span>
         </div>
       </div>
 
-      {/* 协同编辑器区域 */}
-      <div
-        className="flex-1 w-full px-6 lg:px-10 py-6 cursor-text"
-        onClick={() => document.querySelector<HTMLElement>('.ProseMirror')?.focus()}
-      >
-        {authToken ? (
-          <CollaborativeEditor
-            documentId={initialDocument.id}
-            authToken={authToken}
-            wsServerUrl={WS_SERVER_URL}
-            userName={userName}
-            editable={isEditable}
-            onUsersChange={setOnlineUsers}
-            uploadFn={async (file) => {
-              const formData = new FormData()
-              formData.append('file', file)
-              return await uploadImage(formData)
-            }}
-            onStatusChange={(status, time) => {
-              if (status === 'connected') {
-                setSaveStatus('saved')
-                setLastSavedAt(new Date())
-              }
-              else if (status === 'disconnected') setSaveStatus('error')
-              else if (status === 'saved') {
-                setSaveStatus('saved')
-                if (time) setLastSavedAt(new Date(time))
-              }
-            }}
-            placeholder="开始输入正文，多人实时协同..."
-            className="prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px]"
-          />
-        ) : (
-          // Token 加载中的骨架占位
-          <div className="animate-pulse space-y-3 pt-4">
-            <div className="h-4 bg-muted rounded w-3/4" />
-            <div className="h-4 bg-muted rounded w-full" />
-            <div className="h-4 bg-muted rounded w-5/6" />
-            <div className="h-4 bg-muted rounded w-2/3" />
-          </div>
-        )}
-      </div>
+      {/* 右侧 AI 助手面板 */}
+      <AiAssistantPanel isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} />
     </div>
   )
 }

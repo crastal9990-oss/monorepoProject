@@ -44,6 +44,7 @@ export async function POST(req: Request) {
         }
 
         let contextText = '';
+        let sources: Array<{ document_id: string; document_title: string; chunk_content: string }> = [];
 
         if (currentNoteId) {
             // ==========================================
@@ -64,6 +65,11 @@ export async function POST(req: Request) {
 
             if (doc?.plain_content) {
                 contextText = `(当前文档: ${doc.title || '未命名'}):\n${doc.plain_content}`;
+                sources = [{
+                    document_id: currentNoteId,
+                    document_title: doc.title || '未命名',
+                    chunk_content: doc.plain_content
+                }];
             }
             console.log('[DEBUG] 纯文本内容提取成功！');
 
@@ -100,6 +106,11 @@ export async function POST(req: Request) {
                 contextText = chunks.map((chunk: any, index: number) =>
                     `[${index + 1}] (来源文档: ${chunk.document_title}):\n${chunk.chunk_content}`
                 ).join('\n\n---\n\n');
+                sources = chunks.map((c: any) => ({
+                    document_id: c.document_id,
+                    document_title: c.document_title,
+                    chunk_content: c.chunk_content
+                }));
             }
         }
 
@@ -120,7 +131,13 @@ export async function POST(req: Request) {
             temperature: 0.3, // RAG 场景推荐较低温度，降低幻觉
         });
 
-        return result.toTextStreamResponse();
+        return result.toUIMessageStreamResponse({
+            messageMetadata: () => {
+                return {
+                    sources: sources
+                };
+            }
+        });
 
     } catch (error) {
         console.error("Chat API 出错:", error);

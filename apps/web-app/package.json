@@ -12,6 +12,7 @@
     "@ai-sdk/openai": "^3.0.68",
     "@ai-sdk/react": "^3.0.201",
     "@hocuspocus/provider": "^4.1.0",
+    "@hookform/resolvers": "^5.4.0",
     "@repo/editor": "workspace:*",
     "@repo/ui": "workspace:^",
     "@supabase/ssr": "^0.10.3",

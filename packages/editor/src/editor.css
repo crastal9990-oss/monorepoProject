@@ -125,3 +125,24 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   z-index: 100;
 }
+
+/* --- AI 引用高亮闪烁效果 --- */
+.ai-highlight-flash {
+  animation: ai-flash 2.5s ease-in-out;
+  border-radius: 2px;
+}
+
+@keyframes ai-flash {
+  0% {
+    background-color: transparent;
+  }
+  15% {
+    background-color: rgba(234, 179, 8, 0.35); /* amber-500 35% opacity */
+  }
+  85% {
+    background-color: rgba(234, 179, 8, 0.35);
+  }
+  100% {
+    background-color: transparent;
+  }
+}

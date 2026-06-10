@@ -276,6 +276,99 @@ export function CollaborativeEditor({
     },
   }, [provider, userName, userColor])
 
+  // 1. 监听自定义事件定位并高亮当前文档正文
+  useEffect(() => {
+    if (!editor) return
+
+    const handleHighlight = (e: any) => {
+      const { text } = e.detail
+      if (!text) return
+
+      const { state, view } = editor
+
+      // 查找对应文本的位置（ProseMirror 绝对位置）
+      let pos = -1
+      state.doc.descendants((node, position) => {
+        if (node.isText && node.text && node.text.includes(text)) {
+          const relativeIndex = node.text.indexOf(text)
+          pos = position + relativeIndex
+          return false // 停止遍历
+        }
+        return true
+      })
+
+      // 如果精确匹配找不到，做一下前30个字符局部匹配
+      if (pos === -1) {
+        const snippet = text.slice(0, 30).trim()
+        if (snippet.length > 5) {
+          state.doc.descendants((node, position) => {
+            if (node.isText && node.text && node.text.includes(snippet)) {
+              pos = position + node.text.indexOf(snippet)
+              return false
+            }
+            return true
+          })
+        }
+      }
+
+      if (pos !== -1) {
+        // 选中这段文本
+        editor.chain().focus().setTextSelection({ from: pos, to: pos + text.length }).run()
+        
+        // 滚动定位到可视区域
+        setTimeout(() => {
+          const domNode = view.nodeDOM(pos) as HTMLElement | null
+          if (domNode) {
+            domNode.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          } else {
+            view.dispatch(state.tr.scrollIntoView())
+          }
+          
+          // 给选中的节点或区域加一下临时高亮闪烁效果
+          const editorElement = view.dom
+          const selectedDom = editorElement.querySelector('.ProseMirror-selectednode') || window.getSelection()?.anchorNode?.parentElement
+          if (selectedDom) {
+            selectedDom.classList.add('ai-highlight-flash')
+            setTimeout(() => {
+              selectedDom.classList.remove('ai-highlight-flash')
+            }, 2500)
+          }
+        }, 100)
+      } else {
+        toast.error('未在当前文档正文中找到该引用片段')
+      }
+    }
+
+    window.addEventListener('ai-highlight-text' as any, handleHighlight)
+    return () => {
+      window.removeEventListener('ai-highlight-text' as any, handleHighlight)
+    }
+  }, [editor])
+
+  // 2. 检测 URL 中的 highlight 参数并在编辑器加载/同步完成后自动定位高亮
+  useEffect(() => {
+    if (!editor || connectionStatus !== 'connected') return
+
+    const searchParams = new URLSearchParams(window.location.search)
+    const highlightText = searchParams.get('highlight')
+
+    if (highlightText) {
+      // 延迟 800ms 等待 Yjs 协同文档完成初始内容同步
+      const timer = setTimeout(() => {
+        const event = new CustomEvent('ai-highlight-text', {
+          detail: { text: highlightText }
+        })
+        window.dispatchEvent(event)
+        
+        // 清除 URL 中的 highlight 参数，避免下次刷新页面重复高亮
+        const newUrl = window.location.pathname
+        window.history.replaceState({}, '', newUrl)
+      }, 800)
+
+      return () => clearTimeout(timer)
+    }
+  }, [editor, connectionStatus])
+
   const toggleDropdown = (name: string) => {
     setActiveDropdown(prev => prev === name ? null : name)
   }
