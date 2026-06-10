@@ -210,6 +210,9 @@ importers:
       '@tiptap/extension-placeholder':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/extensions@3.26.0)
+      '@tiptap/extension-table-of-contents':
+        specifier: ^3.26.0
+        version: 3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)
       '@tiptap/extension-text':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/core@3.26.0)
@@ -2661,6 +2664,17 @@ packages:
       '@tiptap/core': 3.26.0
     dependencies:
       '@tiptap/core': 3.26.0(@tiptap/pm@3.26.0)
+    dev: false
+
+  /@tiptap/extension-table-of-contents@3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0):
+    resolution: {integrity: sha512-vqF8rAPAed/IjLtYTHBSlNAGDVEnJnRnL7F/LX0dVqSpZ0hk/Wf/pGMk/+blts4zGytjGCSVv3/6MyyfAvguUw==}
+    peerDependencies:
+      '@tiptap/core': 3.26.0
+      '@tiptap/pm': 3.26.0
+    dependencies:
+      '@tiptap/core': 3.26.0(@tiptap/pm@3.26.0)
+      '@tiptap/pm': 3.26.0
+      uuid: 14.0.0
     dev: false
 
   /@tiptap/extension-text-align@3.26.0(@tiptap/core@3.26.0):
@@ -6919,6 +6933,11 @@ packages:
   /util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
     dev: true
+
+  /uuid@14.0.0:
+    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
+    hasBin: true
+    dev: false
 
   /v8-compile-cache@2.4.0:
     resolution: {integrity: sha512-ocyWc3bAHBB/guyqJQVI5o4BZkPhznPYUG2ea80Gond/BgNWpap8TOmLSeeQG7bnh2KMISxskdADG59j7zruhw==}

@@ -10,6 +10,7 @@ import { createClient } from '@/utils/supabase/client'
 import { useSearchParams } from 'next/navigation' //引入读取 URL 参数的钩子
 import ShareButton from './share-button'
 import { AiAssistantPanel } from '@/components/layout/ai'
+import { TableOfContents } from '@/components/layout/TableOfContents'
 
 // 定义传入数据的类型
 interface DocumentEditorProps {
@@ -40,6 +41,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   const [userName, setUserName] = useState<string>('匿名用户')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isAiOpen, setIsAiOpen] = useState(false)
+  const [editorInstance, setEditorInstance] = useState<any>(null)
 
   const isOwner = currentUserId === initialDocument.user_id
   const isEditable = isOwner || initialDocument.share_permission === 'editor'
@@ -131,8 +133,11 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
   return (
     <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-60px)] w-full overflow-hidden bg-background">
-      {/* 左侧编辑器区域 */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto min-w-0 transition-all duration-300">
+      {/* 侧边目录 (左侧) */}
+      <TableOfContents editor={editorInstance} />
+
+      {/* 编辑器主体区域 */}
+      <div id="editor-scroll-container" className="flex-1 flex flex-col h-full overflow-y-auto min-w-0 transition-all duration-300 relative">
         <div className="flex flex-col h-full max-w-5xl mx-auto w-full relative">
           {/* 顶部固定区域 */}
           <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm pt-6 lg:pt-10 px-6 lg:px-10 pb-4 border-b border-transparent transition-all">
@@ -221,6 +226,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
                   formData.append('file', file)
                   return await uploadImage(formData)
                 }}
+                onEditorReady={setEditorInstance}
                 onStatusChange={(status, time) => {
                   if (status === 'connected') {
                     setSaveStatus('saved')

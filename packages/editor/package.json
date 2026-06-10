@@ -33,6 +33,7 @@
     "@tiptap/extension-link": "^3.26.0",
     "@tiptap/extension-paragraph": "^3.26.0",
     "@tiptap/extension-placeholder": "^3.26.0",
+    "@tiptap/extension-table-of-contents": "^3.26.0",
     "@tiptap/extension-text": "^3.26.0",
     "@tiptap/extension-text-align": "^3.26.0",
     "@tiptap/extension-text-style": "^3.26.0",

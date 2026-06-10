@@ -42,6 +42,7 @@ import { useImageUpload } from './hooks/use-image-upload'
 import { X } from 'lucide-react'
 import './editor.css'
 import { toast } from '@repo/ui'
+import { TableOfContents } from '@tiptap/extension-table-of-contents'
 
 export interface CollaborativeEditorProps {
   documentId: string
@@ -55,6 +56,8 @@ export interface CollaborativeEditorProps {
   onStatusChange?: (status: 'connecting' | 'connected' | 'disconnected' | 'saved', time?: string) => void
   onUsersChange?: (count: number) => void
   editable?: boolean
+  onTocUpdate?: (toc: any[]) => void
+  onEditorReady?: (editor: any) => void
 }
 
 // ─── 工具子组件 ────────────────────────────────────────────────────────────────
@@ -134,6 +137,8 @@ export function CollaborativeEditor({
   onStatusChange,
   onUsersChange,
   editable = true,
+  onTocUpdate,
+  onEditorReady,
 }: CollaborativeEditorProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [linkUrl, setLinkUrl] = useState<string>('')
@@ -258,6 +263,12 @@ export function CollaborativeEditor({
           class: 'rounded-lg max-w-full mx-auto border border-border/50 align-middle cursor-zoom-in hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all',
         },
       }),
+      TableOfContents.configure({
+        anchorTypes: ['heading'], // 指定哪些节点作为目录锚点，默认就是 'heading'
+        onUpdate: (content) => {
+          onTocUpdate?.(content)
+        }
+      }),
     ],
     content: '',
     editorProps: {
@@ -275,6 +286,12 @@ export function CollaborativeEditor({
       },
     },
   }, [provider, userName, userColor])
+
+  useEffect(() => {
+    if (editor && onEditorReady) {
+      onEditorReady(editor)
+    }
+  }, [editor, onEditorReady])
 
   // 1. 监听自定义事件定位并高亮当前文档正文
   useEffect(() => {
