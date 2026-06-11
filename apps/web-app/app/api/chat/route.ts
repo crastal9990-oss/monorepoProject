@@ -43,6 +43,14 @@ export async function POST(req: Request) {
             return new Response('Empty message', { status: 400 });
         }
 
+        // 🟢 1. 立即把用户的问题存入数据库
+        await supabase.from('chat_messages').insert({
+            user_id: user.id,
+            document_id: currentNoteId || null,
+            role: 'user',
+            content: latestMessage
+        });
+
         let contextText = '';
         let sources: Array<{ document_id: string; document_title: string; chunk_content: string }> = [];
 
@@ -129,6 +137,16 @@ export async function POST(req: Request) {
             system: systemPrompt,
             messages: coreMessages,
             temperature: 0.3, // RAG 场景推荐较低温度，降低幻觉
+            onFinish: async ({ text }) => {
+                // 🟢 2. 流式结束后，把 AI 的完整回答连同引用的卡片信息存入数据库
+                await supabase.from('chat_messages').insert({
+                    user_id: user.id,
+                    document_id: currentNoteId || null,
+                    role: 'assistant',
+                    content: text,
+                    metadata: { sources }
+                });
+            }
         });
 
         return result.toUIMessageStreamResponse({

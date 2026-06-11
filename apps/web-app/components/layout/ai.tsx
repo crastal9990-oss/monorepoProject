@@ -6,6 +6,8 @@ import { useChat } from "@ai-sdk/react"
 import { Button, Input, ScrollArea } from "@repo/ui"
 import { Send, Bot, User, Loader2, Sparkles, BookOpen } from "lucide-react"
 import { DefaultChatTransport } from "ai"
+import { createClient } from '@/utils/supabase/client'
+import { Trash2 } from "lucide-react"
 
 interface AiAssistantPanelProps {
     isOpen: boolean
@@ -34,11 +36,58 @@ export function AiAssistantPanel({ isOpen, onClose }: AiAssistantPanelProps) {
         })
     }), [currentNoteId])
 
-    const { messages, sendMessage, status } = useChat({
+    const { messages, setMessages, sendMessage, status } = useChat({
         transport
     })
 
     const isLoading = status === 'submitted' || status === 'streaming'
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false)
+
+    // 🟢 加载历史对话
+    useEffect(() => {
+        if (!isOpen) return
+
+        const fetchHistory = async () => {
+            setIsHistoryLoading(true)
+            const supabase = createClient()
+            
+            let query = supabase.from('chat_messages').select('*')
+            
+            if (searchScope === 'document' && currentNoteId) {
+                query = query.eq('document_id', currentNoteId)
+            } else {
+                query = query.is('document_id', null)
+            }
+
+            const { data } = await query.order('created_at', { ascending: true })
+
+            if (data && data.length > 0) {
+                setMessages(data.map(m => ({
+                    id: m.id,
+                    role: m.role as any,
+                    content: m.content,
+                    parts: [{ type: 'text', text: m.content }],
+                    metadata: m.metadata || {}
+                })))
+            } else {
+                setMessages([])
+            }
+            setIsHistoryLoading(false)
+        }
+
+        fetchHistory()
+    }, [isOpen, searchScope, currentNoteId, setMessages])
+
+    // 🟢 清空历史记录
+    const handleClearChat = async () => {
+        const supabase = createClient()
+        if (searchScope === 'document' && currentNoteId) {
+            await supabase.from('chat_messages').delete().eq('document_id', currentNoteId)
+        } else {
+            await supabase.from('chat_messages').delete().is('document_id', null)
+        }
+        setMessages([])
+    }
 
     // 自动滚动到底部
     useEffect(() => {
@@ -59,10 +108,7 @@ export function AiAssistantPanel({ isOpen, onClose }: AiAssistantPanelProps) {
 
     return (
         <div
-            className={`h-full flex flex-col bg-background border-l shrink-0 transition-all duration-300 ease-in-out overflow-hidden z-30 ${
-                isOpen ? 'w-full sm:w-[420px] border-border opacity-100' : 'w-0 border-transparent opacity-0 pointer-events-none'
-            }`}
-        >
+            className={`h-full flex flex-col bg-background border-l shrink-0 transition-all duration-300 ease-in-out overflow-hidden z-30 ${isOpen ? 'w-full sm:w-[420px] border-border opacity-100' : 'w-0 border-transparent opacity-0 pointer-events-none'}`}>
             <div className="flex flex-col h-full w-full sm:w-[420px]">
                 {/* 顶部标题区 */}
                 <div className="border-b px-6 py-4 flex justify-between items-center shrink-0">
@@ -75,7 +121,12 @@ export function AiAssistantPanel({ isOpen, onClose }: AiAssistantPanelProps) {
                             基于文档内容实时问答
                         </div>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">✕</Button>
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={handleClearChat} title="清空对话记录" className="h-8 w-8 rounded-full text-muted-foreground hover:text-red-500">
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 rounded-full">✕</Button>
+                    </div>
                 </div>
 
                 {/* 提问范围选择 */}
@@ -96,7 +147,12 @@ export function AiAssistantPanel({ isOpen, onClose }: AiAssistantPanelProps) {
                 {/* 聊天记录区域 */}
                 <ScrollArea className="flex-1 w-full px-4 py-6">
                     <div className="flex flex-col gap-6">
-                        {messages.length === 0 && (
+                        {isHistoryLoading && (
+                            <div className="flex justify-center items-center py-4 text-muted-foreground">
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            </div>
+                        )}
+                        {!isHistoryLoading && messages.length === 0 && (
                             <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground/60">
                                 <Bot className="h-16 w-16 mb-4 stroke-[1]" />
                                 <p className="text-sm">开启你的智能对话</p>
@@ -116,54 +172,54 @@ export function AiAssistantPanel({ isOpen, onClose }: AiAssistantPanelProps) {
                                                 <Bot className="h-5 w-5 text-blue-600" />
                                             </div>
                                         )}
-                                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-sm ${isUser
-                                                                ? 'bg-primary text-primary-foreground rounded-br-none'
-                                                                : 'bg-muted/50 text-foreground border rounded-bl-none'
-                                                                }`}>
-                                                                <div className="whitespace-pre-wrap leading-relaxed">{textContent}</div>
-                                                            </div>
-                                                            {isUser && (
-                                                                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                                                    <User className="h-5 w-5" />
-                                                                </div>
-                                                            )}
-                                                        </div>
+                                        <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-sm ${isUser
+                                            ? 'bg-primary text-primary-foreground rounded-br-none'
+                                            : 'bg-muted/50 text-foreground border rounded-bl-none'
+                                            }`}>
+                                            <div className="whitespace-pre-wrap leading-relaxed">{textContent}</div>
+                                        </div>
+                                        {isUser && (
+                                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                                <User className="h-5 w-5" />
+                                            </div>
+                                        )}
+                                    </div>
 
-                                                        {/* 渲染参考资料卡片 */}
-                                                        {!isUser && sources.length > 0 && !(isLoading && m.id === messages[messages.length - 1]?.id) && (
-                                                            <div className="ml-11 mt-1 pr-6 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                                                                <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                                                                    <BookOpen className="h-3 w-3 text-blue-500" />
-                                                                    参考来源:
-                                                                </div>
-                                                                <div className="flex flex-col gap-1.5">
-                                                                    {sources.map((src: any, sIdx: number) => (
-                                                                        <button
-                                                                            key={sIdx}
-                                                                            onClick={() => {
-                                                                                if (src.document_id === currentNoteId) {
-                                                                                    const event = new CustomEvent('ai-highlight-text', {
-                                                                                        detail: { text: src.chunk_content, documentId: src.document_id }
-                                                                                    });
-                                                                                    window.dispatchEvent(event);
-                                                                                } else {
-                                                                                    // 跳转到对应的文档，并通过 URL 参数传递高亮文本
-                                                                                    router.push(`/notes/${src.document_id}?highlight=${encodeURIComponent(src.chunk_content)}`);
-                                                                                }
-                                                                            }}
-                                                                            className="group text-left p-2 rounded-lg bg-muted/40 border border-border/50 hover:bg-muted/80 hover:border-primary/30 transition-all text-xs flex flex-col gap-0.5"
-                                                                        >
-                                                                            <div className="font-medium text-foreground/80 flex items-center justify-between">
-                                                                                <span className="truncate max-w-[75%]">[{sIdx + 1}] {src.document_title}</span>
-                                                                                <span className="text-[10px] text-primary/70 opacity-0 group-hover:opacity-100 transition-opacity font-normal">点击定位高亮</span>
-                                                                            </div>
-                                                                            <div className="text-muted-foreground line-clamp-2 leading-relaxed font-normal">{src.chunk_content}</div>
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                    {/* 渲染参考资料卡片 */}
+                                    {!isUser && sources.length > 0 && !(isLoading && m.id === messages[messages.length - 1]?.id) && (
+                                        <div className="ml-11 mt-1 pr-6 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                                            <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                                <BookOpen className="h-3 w-3 text-blue-500" />
+                                                参考来源:
+                                            </div>
+                                            <div className="flex flex-col gap-1.5">
+                                                {sources.map((src: any, sIdx: number) => (
+                                                    <button
+                                                        key={sIdx}
+                                                        onClick={() => {
+                                                            if (src.document_id === currentNoteId) {
+                                                                const event = new CustomEvent('ai-highlight-text', {
+                                                                    detail: { text: src.chunk_content, documentId: src.document_id }
+                                                                });
+                                                                window.dispatchEvent(event);
+                                                            } else {
+                                                                // 跳转到对应的文档，并通过 URL 参数传递高亮文本
+                                                                router.push(`/notes/${src.document_id}?highlight=${encodeURIComponent(src.chunk_content)}`);
+                                                            }
+                                                        }}
+                                                        className="group text-left p-2 rounded-lg bg-muted/40 border border-border/50 hover:bg-muted/80 hover:border-primary/30 transition-all text-xs flex flex-col gap-0.5"
+                                                    >
+                                                        <div className="font-medium text-foreground/80 flex items-center justify-between">
+                                                            <span className="truncate max-w-[75%]">[{sIdx + 1}] {src.document_title}</span>
+                                                            <span className="text-[10px] text-primary/70 opacity-0 group-hover:opacity-100 transition-opacity font-normal">点击定位高亮</span>
+                                                        </div>
+                                                        <div className="text-muted-foreground line-clamp-2 leading-relaxed font-normal">{src.chunk_content}</div>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )
                         })}
                         <div ref={messagesEndRef} />
