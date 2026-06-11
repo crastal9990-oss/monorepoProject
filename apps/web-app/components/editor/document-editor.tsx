@@ -41,6 +41,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   const [userName, setUserName] = useState<string>('匿名用户')
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
   const [isAiOpen, setIsAiOpen] = useState(false)
+  const [isSynced, setIsSynced] = useState(false)
   const [editorInstance, setEditorInstance] = useState<any>(null)
 
   const isOwner = currentUserId === initialDocument.user_id
@@ -117,10 +118,10 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   }, [title])
 
   const handleBack = async () => {
-    // ✅ 清除 localStorage 缓存，下次打开列表页强制重新拉取
+    // 清除 localStorage 缓存，下次打开列表页强制重新拉取
     localStorage.removeItem('all_notes_cache')
     localStorage.removeItem('dashboard_notes_cache')
-    // ✅ 通知 Next.js 丢弃服务端缓存
+    // 通知 Next.js 丢弃服务端缓存
     revalidateAfterEdit()
     router.back()
   }
@@ -133,8 +134,10 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
   return (
     <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-60px)] w-full overflow-hidden bg-background">
-      {/* 侧边目录 (左侧) */}
-      <TableOfContents editor={editorInstance} />
+      {/* 侧边目录 (左侧)，未同步完成时隐藏以避免闪烁 */}
+      <div className={`shrink-0 h-full transition-opacity duration-300 ${isSynced ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <TableOfContents editor={editorInstance} />
+      </div>
 
       {/* 编辑器主体区域 */}
       <div id="editor-scroll-container" className="flex-1 flex flex-col h-full overflow-y-auto min-w-0 transition-all duration-300 relative">
@@ -210,45 +213,67 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
           {/* 协同编辑器区域 */}
           <div
-            className="flex-1 w-full px-6 lg:px-10 py-6 cursor-text"
+            className="flex-1 w-full px-6 lg:px-10 py-6 cursor-text relative"
             onClick={() => document.querySelector<HTMLElement>('.ProseMirror')?.focus()}
           >
             {authToken ? (
-              <CollaborativeEditor
-                documentId={initialDocument.id}
-                authToken={authToken}
-                wsServerUrl={WS_SERVER_URL}
-                userName={userName}
-                editable={isEditable}
-                highlightText={searchParams.get('highlight') || undefined}
-                onUsersChange={setOnlineUsers}
-                uploadFn={async (file) => {
-                  const formData = new FormData()
-                  formData.append('file', file)
-                  return await uploadImage(formData)
-                }}
-                onEditorReady={setEditorInstance}
-                onStatusChange={(status, time) => {
-                  if (status === 'connected') {
-                    setSaveStatus('saved')
-                    setLastSavedAt(new Date())
-                  }
-                  else if (status === 'disconnected') setSaveStatus('error')
-                  else if (status === 'saved') {
-                    setSaveStatus('saved')
-                    if (time) setLastSavedAt(new Date(time))
-                  }
-                }}
-                placeholder="开始输入正文，多人实时协同..."
-                className="prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px]"
-              />
+              <>
+                {/* 骨架占位（当还没同步完成时显示） */}
+                {!isSynced && (
+                  <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 px-6 lg:px-10 py-6 pointer-events-none">
+                    <div className="animate-pulse space-y-4">
+                      <div className="h-5 bg-muted rounded w-3/4" />
+                      <div className="h-5 bg-muted rounded w-full" />
+                      <div className="h-5 bg-muted rounded w-5/6" />
+                      <div className="h-5 bg-muted rounded w-2/3" />
+                      <div className="h-5 bg-muted rounded w-full mt-8" />
+                      <div className="h-5 bg-muted rounded w-4/5" />
+                    </div>
+                  </div>
+                )}
+                
+                {/* 真正的编辑器，等同步完成后平滑显示出来 */}
+                <div className={`transition-opacity duration-300 ${isSynced ? 'opacity-100' : 'opacity-0'}`}>
+                  <CollaborativeEditor
+                    documentId={initialDocument.id}
+                    authToken={authToken}
+                    wsServerUrl={WS_SERVER_URL}
+                    userName={userName}
+                    editable={isEditable}
+                    highlightText={searchParams.get('highlight') || undefined}
+                    onUsersChange={setOnlineUsers}
+                    uploadFn={async (file) => {
+                      const formData = new FormData()
+                      formData.append('file', file)
+                      return await uploadImage(formData)
+                    }}
+                    onEditorReady={setEditorInstance}
+                    onStatusChange={(status, time) => {
+                      if (status === 'synced') {
+                        setIsSynced(true)
+                      }
+                      else if (status === 'connected') {
+                        setSaveStatus('saved')
+                        setLastSavedAt(new Date())
+                      }
+                      else if (status === 'disconnected') setSaveStatus('error')
+                      else if (status === 'saved') {
+                        setSaveStatus('saved')
+                        if (time) setLastSavedAt(new Date(time))
+                      }
+                    }}
+                    placeholder="开始输入正文，多人实时协同..."
+                    className="prose prose-sm sm:prose-base dark:prose-invert focus:outline-none max-w-full min-h-[500px]"
+                  />
+                </div>
+              </>
             ) : (
               // Token 加载中的骨架占位
               <div className="animate-pulse space-y-3 pt-4">
-                <div className="h-4 bg-muted rounded w-3/4" />
-                <div className="h-4 bg-muted rounded w-full" />
-                <div className="h-4 bg-muted rounded w-5/6" />
-                <div className="h-4 bg-muted rounded w-2/3" />
+                <div className="h-5 bg-muted rounded w-3/4" />
+                <div className="h-5 bg-muted rounded w-full" />
+                <div className="h-5 bg-muted rounded w-5/6" />
+                <div className="h-5 bg-muted rounded w-2/3" />
               </div>
             )}
           </div>

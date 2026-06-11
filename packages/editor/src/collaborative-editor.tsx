@@ -44,7 +44,7 @@ export interface CollaborativeEditorProps {
   uploadFn?: (file: File) => Promise<string | null>
   className?: string
   placeholder?: string
-  onStatusChange?: (status: 'connecting' | 'connected' | 'disconnected' | 'saved', time?: string) => void
+  onStatusChange?: (status: 'connecting' | 'connected' | 'disconnected' | 'saved' | 'synced', time?: string) => void
   onUsersChange?: (count: number) => void
   editable?: boolean
   onTocUpdate?: (toc: any[]) => void
@@ -178,6 +178,9 @@ export function CollaborativeEditor({
       onConnect: () => {
         setConnectionStatus('connected')
         onStatusChangeRef.current?.('connected')
+      },
+      onSynced: () => {
+        onStatusChangeRef.current?.('synced')
       },
       onDisconnect: () => {
         setConnectionStatus('disconnected')
