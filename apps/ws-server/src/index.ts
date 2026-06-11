@@ -12,7 +12,7 @@ const lastExcerptGenerationTime = new Map<string, number>()
 const EXCERPT_GENERATION_INTERVAL = 30 * 1000 // 30 秒 (摘要)
 
 const lastEmbeddingGenerationTime = new Map<string, number>()
-const EMBEDDING_GENERATION_INTERVAL = 1 * 60 * 1000 // 3 分钟 (向量切块)
+const EMBEDDING_GENERATION_INTERVAL = 5 * 60 * 1000 // 3 分钟 (向量切块)
 
 // 环境变量校验
 const requiredEnvVars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']

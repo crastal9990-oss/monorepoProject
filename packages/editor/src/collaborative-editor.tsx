@@ -18,31 +18,21 @@ import * as Y from 'yjs'
 import { useEffect, useState, useRef } from 'react'
 import './editor.css'
 import {
-  Bold,
-  Italic,
-  Strikethrough,
+  Bold, Italic, Strikethrough,
   Underline as UnderlineIcon,
   Link as LinkIcon,
-  Code,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  AlignJustify,
-  Type,
-  Baseline,
-  ChevronDown,
-  Eraser,
-  Wifi,
-  WifiOff,
-  Users,
-  WandSparkles, Loader2 // 🌟 新增 AI 相关图标
+  Code, AlignLeft, AlignCenter,
+  AlignRight, AlignJustify, Type, Baseline,
+  ChevronDown, Eraser, X,
+  WandSparkles, Loader2, Check // 🌟 新增 AI 相关图标
 } from 'lucide-react'
 import './editor.css'
 import { useImageUpload } from './hooks/use-image-upload'
-import { X } from 'lucide-react'
+
 import './editor.css'
 import { toast } from '@repo/ui'
 import { TableOfContents } from '@tiptap/extension-table-of-contents'
+import { Button } from "@repo/ui"
 
 export interface CollaborativeEditorProps {
   documentId: string
@@ -149,6 +139,13 @@ export function CollaborativeEditor({
   const { handlePaste, handleDrop } = useImageUpload(uploadFn)
 
   const [isAIGenerating, setIsAIGenerating] = useState(false) // 记录 AI 是否正在流式输出
+  // AI预览状态，用于存储原始文本、生成内容的起始位置和结束位置
+  const [aiPreviewState, setAiPreviewState] = useState<{
+    originalText: string;
+    from: number;
+    to: number;
+  } | null>(null)
+  const [previewCoords, setPreviewCoords] = useState<{ top: number, left: number } | null>(null)
   // 创建 Yjs 文档（只创建一次）
   const ydocRef = useRef<Y.Doc | null>(null)
   if (!ydocRef.current) {
@@ -210,9 +207,12 @@ export function CollaborativeEditor({
   // 3. 同步用户名字和颜色的逻辑，也要加个判空
   useEffect(() => {
     if (provider) {
-      provider.setAwarenessField('user', { name: userName, color: userColor || '#f783ac' })
+      provider.setAwarenessField('user', {
+        name: isAIGenerating ? `${userName} + AI` : userName,
+        color: isAIGenerating ? '#a855f7' : (userColor || '#f783ac')
+      })
     }
-  }, [provider, userName, userColor])
+  }, [provider, userName, userColor, isAIGenerating])
 
   // ── 图片预览滚动锁 ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -331,7 +331,7 @@ export function CollaborativeEditor({
       if (pos !== -1) {
         // 选中这段文本
         editor.chain().focus().setTextSelection({ from: pos, to: pos + text.length }).run()
-        
+
         // 滚动定位到可视区域
         setTimeout(() => {
           const domNode = view.nodeDOM(pos) as HTMLElement | null
@@ -340,7 +340,7 @@ export function CollaborativeEditor({
           } else {
             view.dispatch(state.tr.scrollIntoView())
           }
-          
+
           // 给选中的节点或区域加一下临时高亮闪烁效果
           const editorElement = view.dom
           const selectedDom = editorElement.querySelector('.ProseMirror-selectednode') || window.getSelection()?.anchorNode?.parentElement
@@ -376,7 +376,7 @@ export function CollaborativeEditor({
           detail: { text: highlightText }
         })
         window.dispatchEvent(event)
-        
+
         // 清除 URL 中的 highlight 参数，避免下次刷新页面重复高亮
         const newUrl = window.location.pathname
         window.history.replaceState({}, '', newUrl)
@@ -398,6 +398,52 @@ export function CollaborativeEditor({
       editor?.chain().focus().extendMarkRange('link').setLink({ href: linkUrl }).run()
     }
     closeDropdown()
+    closeDropdown()
+  }
+
+  // 监听预览状态并更新浮浮窗位置
+  useEffect(() => {
+    if (aiPreviewState && editor) {
+      const updateCoords = () => {
+        try {
+          const coords = editor.view.coordsAtPos(aiPreviewState.to)
+          const wrapper = editor.view.dom.closest('.tiptap-wrapper') as HTMLElement
+          if (wrapper) {
+            const rect = wrapper.getBoundingClientRect()
+            setPreviewCoords({
+              top: coords.bottom - rect.top + 10,
+              left: Math.max(0, coords.left - rect.left - 100)
+            })
+          }
+        } catch (e) {
+          console.error(e)
+        }
+      }
+      updateCoords()
+    } else {
+      setPreviewCoords(null)
+    }
+  }, [aiPreviewState, editor])
+
+  const handleAcceptAI = () => {
+    if (!editor || !aiPreviewState) return
+    editor.chain().focus()
+      .setTextSelection({ from: aiPreviewState.from, to: aiPreviewState.to })
+      .unsetHighlight()
+      .run()
+
+    editor.chain().focus().setTextSelection(editor.state.selection.to).run()
+    setAiPreviewState(null)
+  }
+
+  const handleRejectAI = () => {
+    if (!editor || !aiPreviewState) return
+    editor.chain().focus()
+      .deleteRange({ from: aiPreviewState.from, to: aiPreviewState.to })
+      .insertContent(aiPreviewState.originalText)
+      .run()
+
+    setAiPreviewState(null)
   }
 
   // 🌟 核心新增：AI 流式替换逻辑
@@ -411,7 +457,6 @@ export function CollaborativeEditor({
 
     closeDropdown()
     setIsAIGenerating(true)
-    editor.setEditable(false)
 
     try {
       // 1. 发起真实的网络请求（此时保留原文本，不提前删除）
@@ -437,7 +482,7 @@ export function CollaborativeEditor({
           if (chunk) {
             // 当接收到真正的第一段数据包时，才把原文删掉
             if (isFirstChunk) {
-              editor.chain().focus().deleteRange({ from, to }).insertContent(chunk).run()
+              editor.chain().focus().deleteRange({ from, to }).setHighlight({ color: '#f3e8ff' }).insertContent(chunk).run()
               isFirstChunk = false
             } else {
               // 后续的数据包直接在光标处追加
@@ -445,24 +490,80 @@ export function CollaborativeEditor({
             }
           }
         }
+
+        const endPos = editor.state.selection.to
+        editor.chain().focus().setTextSelection({ from, to: endPos }).run()
+
+        setAiPreviewState({
+          originalText: selectedText,
+          from,
+          to: endPos
+        })
       }
     } catch (error) {
       toast.error('AI 生成失败，请重试')
       console.error(error)
     } finally {
-      editor.setEditable(true)
       setIsAIGenerating(false)
     }
   }
 
   return (
     <>
-      <div className="tiptap-wrapper relative rounded-md overflow-visible bg-background" onMouseLeave={closeDropdown}>
+      <div
+        className="tiptap-wrapper relative rounded-md overflow-visible bg-background"
+        onMouseLeave={closeDropdown}
+        onKeyDownCapture={(e) => {
+          if (isAIGenerating || aiPreviewState) {
+            e.preventDefault()
+            e.stopPropagation()
+          }
+        }}
+      >
+        {/* 在 AI 生成期间和等待确认期间显示一个透明遮罩，拦截所有鼠标点击和选择，防止焦点乱跑 */}
+        {(isAIGenerating || aiPreviewState) && (
+          <div
+            className="absolute inset-0 z-[40]"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+            }}
+          />
+        )}
+        {/* AI 接受/拒绝的悬浮菜单 */}
+        {aiPreviewState && previewCoords && (
+          <div
+            className="absolute z-50 flex items-center gap-1.5 p-1 bg-popover border text-popover-foreground shadow-md rounded-md animate-in fade-in zoom-in-95"
+            style={{ top: previewCoords.top, left: previewCoords.left }}
+          >
+            <div className="flex items-center gap-1 pr-1">
+              <Button
+                onClick={handleAcceptAI}
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-500/15 transition-colors"
+              >
+                <Check className="w-3.5 h-3.5 mr-1" />
+                接受
+              </Button>
+
+              <Button
+                onClick={handleRejectAI}
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 text-red-600 dark:text-red-500 hover:text-red-700 dark:hover:text-red-400 hover:bg-red-500/15 transition-colors"
+              >
+                <X className="w-3.5 h-3.5 mr-1" />
+                拒绝
+              </Button>
+            </div>
+          </div>
+        )}
         {editor && (
           <BubbleMenu
             editor={editor}
             options={{ placement: 'top' }}
-            shouldShow={({ from, to }) => from !== to && !editor.isActive('image')}
+            shouldShow={({ from, to }) => from !== to && !editor.isActive('image') && !aiPreviewState}
             className="flex items-center gap-0.5 bg-background border border-border shadow-xl rounded-xl overflow-visible p-1.5 z-50"
           >
             {/* 标题 */}
