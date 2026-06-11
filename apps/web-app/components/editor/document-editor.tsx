@@ -220,6 +220,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
                 wsServerUrl={WS_SERVER_URL}
                 userName={userName}
                 editable={isEditable}
+                highlightText={searchParams.get('highlight') || undefined}
                 onUsersChange={setOnlineUsers}
                 uploadFn={async (file) => {
                   const formData = new FormData()

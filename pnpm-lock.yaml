@@ -180,6 +180,9 @@ importers:
       '@repo/ui':
         specifier: workspace:*
         version: link:../ui
+      '@tiptap/core':
+        specifier: ^3.26.0
+        version: 3.26.0(@tiptap/pm@3.26.0)
       '@tiptap/extension-bubble-menu':
         specifier: ^3.26.0
         version: 3.26.0(@tiptap/core@3.26.0)(@tiptap/pm@3.26.0)

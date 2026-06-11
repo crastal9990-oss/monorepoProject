@@ -128,21 +128,17 @@
 
 /* --- AI 引用高亮闪烁效果 --- */
 .ai-highlight-flash {
-  animation: ai-flash 2.5s ease-in-out;
-  border-radius: 2px;
+  border-radius: 4px;
+  animation: pure-gray-flash 2.5s ease-out forwards;
 }
 
-@keyframes ai-flash {
-  0% {
-    background-color: transparent;
-  }
-  15% {
-    background-color: rgba(234, 179, 8, 0.35); /* amber-500 35% opacity */
-  }
-  85% {
-    background-color: rgba(234, 179, 8, 0.35);
-  }
+@keyframes pure-gray-flash {
+  0%,
   100% {
     background-color: transparent;
+  }
+  15%,
+  80% {
+    background-color: rgba(156, 163, 175, 0.2);
   }
 }

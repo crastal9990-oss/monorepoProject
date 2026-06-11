@@ -33,6 +33,7 @@ import './editor.css'
 import { toast } from '@repo/ui'
 import { TableOfContents } from '@tiptap/extension-table-of-contents'
 import { Button } from "@repo/ui"
+import { AiHighlightExtension } from './extension/ai-highlight'
 
 export interface CollaborativeEditorProps {
   documentId: string
@@ -48,6 +49,7 @@ export interface CollaborativeEditorProps {
   editable?: boolean
   onTocUpdate?: (toc: any[]) => void
   onEditorReady?: (editor: any) => void
+  highlightText?: string
 }
 
 // ─── 工具子组件 ────────────────────────────────────────────────────────────────
@@ -129,6 +131,7 @@ export function CollaborativeEditor({
   editable = true,
   onTocUpdate,
   onEditorReady,
+  highlightText,
 }: CollaborativeEditorProps) {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [linkUrl, setLinkUrl] = useState<string>('')
@@ -234,6 +237,7 @@ export function CollaborativeEditor({
       StarterKit,
       // ✅ Yjs 协同核心
       Collaboration.configure({ document: ydoc }),
+      AiHighlightExtension, // 高亮
       ...(provider ? [
         CollaborationCaret.configure({
           provider: provider,
@@ -332,6 +336,14 @@ export function CollaborativeEditor({
         // 选中这段文本
         editor.chain().focus().setTextSelection({ from: pos, to: pos + text.length }).run()
 
+        // 触发本地的临时闪烁高亮 Decoration（不会被 Yjs 覆盖，也不会被其它人看到）
+        editor.commands.setAiHighlight({ from: pos, to: pos + text.length })
+        setTimeout(() => {
+          if (!editor.isDestroyed) {
+            editor.commands.clearAiHighlight()
+          }
+        }, 2500)
+
         // 滚动定位到可视区域
         setTimeout(() => {
           const domNode = view.nodeDOM(pos) as HTMLElement | null
@@ -339,16 +351,6 @@ export function CollaborativeEditor({
             domNode.scrollIntoView({ behavior: 'smooth', block: 'center' })
           } else {
             view.dispatch(state.tr.scrollIntoView())
-          }
-
-          // 给选中的节点或区域加一下临时高亮闪烁效果
-          const editorElement = view.dom
-          const selectedDom = editorElement.querySelector('.ProseMirror-selectednode') || window.getSelection()?.anchorNode?.parentElement
-          if (selectedDom) {
-            selectedDom.classList.add('ai-highlight-flash')
-            setTimeout(() => {
-              selectedDom.classList.remove('ai-highlight-flash')
-            }, 2500)
           }
         }, 100)
       } else {
@@ -362,29 +364,24 @@ export function CollaborativeEditor({
     }
   }, [editor])
 
-  // 2. 检测 URL 中的 highlight 参数并在编辑器加载/同步完成后自动定位高亮
+  // 2. 检测传入的 highlightText 参数并在编辑器加载/同步完成后自动定位高亮
   useEffect(() => {
-    if (!editor || connectionStatus !== 'connected') return
+    if (!editor || connectionStatus !== 'connected' || !highlightText) return
 
-    const searchParams = new URLSearchParams(window.location.search)
-    const highlightText = searchParams.get('highlight')
+    // 延迟 800ms 等待 Yjs 协同文档完成初始内容同步
+    const timer = setTimeout(() => {
+      const event = new CustomEvent('ai-highlight-text', {
+        detail: { text: highlightText }
+      })
+      window.dispatchEvent(event)
 
-    if (highlightText) {
-      // 延迟 800ms 等待 Yjs 协同文档完成初始内容同步
-      const timer = setTimeout(() => {
-        const event = new CustomEvent('ai-highlight-text', {
-          detail: { text: highlightText }
-        })
-        window.dispatchEvent(event)
+      // 清除 URL 中的 highlight 参数，避免下次刷新页面重复高亮
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, '', newUrl)
+    }, 800)
 
-        // 清除 URL 中的 highlight 参数，避免下次刷新页面重复高亮
-        const newUrl = window.location.pathname
-        window.history.replaceState({}, '', newUrl)
-      }, 800)
-
-      return () => clearTimeout(timer)
-    }
-  }, [editor, connectionStatus])
+    return () => clearTimeout(timer)
+  }, [editor, connectionStatus, highlightText])
 
   const toggleDropdown = (name: string) => {
     setActiveDropdown(prev => prev === name ? null : name)

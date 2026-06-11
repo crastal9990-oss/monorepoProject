@@ -23,6 +23,7 @@
   "dependencies": {
     "@hocuspocus/provider": "^4.1.0",
     "@repo/ui": "workspace:*",
+    "@tiptap/core": "^3.26.0",
     "@tiptap/extension-bubble-menu": "^3.26.0",
     "@tiptap/extension-collaboration": "^3.26.0",
     "@tiptap/extension-collaboration-caret": "^3.26.0",

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useChat } from "@ai-sdk/react"
 import { Button, Input, ScrollArea } from "@repo/ui"
 import { Send, Bot, User, Loader2, Sparkles, BookOpen } from "lucide-react"
@@ -14,6 +14,7 @@ interface AiAssistantPanelProps {
 
 export function AiAssistantPanel({ isOpen, onClose }: AiAssistantPanelProps) {
     const params = useParams()
+    const router = useRouter()
     const currentNoteId = params?.id as string | undefined
     const [searchScope, setSearchScope] = useState<'document' | 'workspace'>('document')
     const [inputValue, setInputValue] = useState('')
@@ -41,8 +42,12 @@ export function AiAssistantPanel({ isOpen, onClose }: AiAssistantPanelProps) {
 
     // 自动滚动到底部
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }, [messages])
+        // 使用 setTimeout 确保在参考资料卡片 DOM 渲染完毕后再执行滚动
+        const timer = setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        }, 50)
+        return () => clearTimeout(timer)
+    }, [messages, isLoading])
 
     const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -111,49 +116,54 @@ export function AiAssistantPanel({ isOpen, onClose }: AiAssistantPanelProps) {
                                                 <Bot className="h-5 w-5 text-blue-600" />
                                             </div>
                                         )}
-                                        <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-sm ${isUser
-                                            ? 'bg-primary text-primary-foreground rounded-br-none'
-                                            : 'bg-muted/50 text-foreground border rounded-bl-none'
-                                            }`}>
-                                            <div className="whitespace-pre-wrap leading-relaxed">{textContent}</div>
-                                        </div>
-                                        {isUser && (
-                                            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                                <User className="h-5 w-5" />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* 渲染参考资料卡片 */}
-                                    {!isUser && sources.length > 0 && (
-                                        <div className="ml-11 mt-1 pr-6 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                                            <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
-                                                <BookOpen className="h-3 w-3 text-blue-500" />
-                                                参考来源:
-                                            </div>
-                                            <div className="flex flex-col gap-1.5">
-                                                {sources.map((src: any, sIdx: number) => (
-                                                    <button
-                                                        key={sIdx}
-                                                        onClick={() => {
-                                                            const event = new CustomEvent('ai-highlight-text', {
-                                                                detail: { text: src.chunk_content, documentId: src.document_id }
-                                                            });
-                                                            window.dispatchEvent(event);
-                                                        }}
-                                                        className="group text-left p-2 rounded-lg bg-muted/40 border border-border/50 hover:bg-muted/80 hover:border-primary/30 transition-all text-xs flex flex-col gap-0.5"
-                                                    >
-                                                        <div className="font-medium text-foreground/80 flex items-center justify-between">
-                                                            <span className="truncate max-w-[75%]">[{sIdx + 1}] {src.document_title}</span>
-                                                            <span className="text-[10px] text-primary/70 opacity-0 group-hover:opacity-100 transition-opacity font-normal">点击定位高亮</span>
+                                                            <div className={`px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-sm ${isUser
+                                                                ? 'bg-primary text-primary-foreground rounded-br-none'
+                                                                : 'bg-muted/50 text-foreground border rounded-bl-none'
+                                                                }`}>
+                                                                <div className="whitespace-pre-wrap leading-relaxed">{textContent}</div>
+                                                            </div>
+                                                            {isUser && (
+                                                                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                                                    <User className="h-5 w-5" />
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className="text-muted-foreground line-clamp-2 leading-relaxed font-normal">{src.chunk_content}</div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+
+                                                        {/* 渲染参考资料卡片 */}
+                                                        {!isUser && sources.length > 0 && !(isLoading && m.id === messages[messages.length - 1]?.id) && (
+                                                            <div className="ml-11 mt-1 pr-6 flex flex-col gap-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                                <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1">
+                                                                    <BookOpen className="h-3 w-3 text-blue-500" />
+                                                                    参考来源:
+                                                                </div>
+                                                                <div className="flex flex-col gap-1.5">
+                                                                    {sources.map((src: any, sIdx: number) => (
+                                                                        <button
+                                                                            key={sIdx}
+                                                                            onClick={() => {
+                                                                                if (src.document_id === currentNoteId) {
+                                                                                    const event = new CustomEvent('ai-highlight-text', {
+                                                                                        detail: { text: src.chunk_content, documentId: src.document_id }
+                                                                                    });
+                                                                                    window.dispatchEvent(event);
+                                                                                } else {
+                                                                                    // 跳转到对应的文档，并通过 URL 参数传递高亮文本
+                                                                                    router.push(`/notes/${src.document_id}?highlight=${encodeURIComponent(src.chunk_content)}`);
+                                                                                }
+                                                                            }}
+                                                                            className="group text-left p-2 rounded-lg bg-muted/40 border border-border/50 hover:bg-muted/80 hover:border-primary/30 transition-all text-xs flex flex-col gap-0.5"
+                                                                        >
+                                                                            <div className="font-medium text-foreground/80 flex items-center justify-between">
+                                                                                <span className="truncate max-w-[75%]">[{sIdx + 1}] {src.document_title}</span>
+                                                                                <span className="text-[10px] text-primary/70 opacity-0 group-hover:opacity-100 transition-opacity font-normal">点击定位高亮</span>
+                                                                            </div>
+                                                                            <div className="text-muted-foreground line-clamp-2 leading-relaxed font-normal">{src.chunk_content}</div>
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
                             )
                         })}
                         <div ref={messagesEndRef} />
