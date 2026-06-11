@@ -7,12 +7,12 @@ import WebSocket from 'ws'
 import 'dotenv/config'
 import { extractTextFromJson, generateAITasksAndSave } from './utils'
 
-// 内存节流记录：documentId -> 上次执行任务的时间戳
-const lastExcerptGenerationTime = new Map<string, number>()
-const EXCERPT_GENERATION_INTERVAL = 30 * 1000 // 30 秒 (摘要)
+// 内存防抖定时器：documentId -> 定时器实例
+const excerptTimers = new Map<string, NodeJS.Timeout>()
+const EXCERPT_GENERATION_DELAY = 30 * 1000 // 30 秒无操作后生成摘要
 
-const lastEmbeddingGenerationTime = new Map<string, number>()
-const EMBEDDING_GENERATION_INTERVAL = 5 * 60 * 1000 // 3 分钟 (向量切块)
+const embeddingTimers = new Map<string, NodeJS.Timeout>()
+const EMBEDDING_GENERATION_DELAY = 3 * 60 * 1000 // 3 分钟无操作后生成向量切块
 
 // 环境变量校验
 const requiredEnvVars = ['NEXT_PUBLIC_SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
@@ -139,25 +139,36 @@ const server = new Server({
           // 提取纯文本 (替换掉容易报错的 tiptapGenerateText)
           const plainTextContent = extractTextFromJson(prosemirrorJson)
 
-          // 异步触发 AI 任务 (双重火控节流)
-          const now = Date.now()
-          const lastExcerptTime = lastExcerptGenerationTime.get(documentName) || 0
-          const lastEmbeddingTime = lastEmbeddingGenerationTime.get(documentName) || 0
-
-          const shouldGenerateExcerpt = now - lastExcerptTime > EXCERPT_GENERATION_INTERVAL
-          const shouldGenerateEmbedding = now - lastEmbeddingTime > EMBEDDING_GENERATION_INTERVAL
-
-          if (shouldGenerateExcerpt || shouldGenerateEmbedding) {
-            // 更新对应的时间戳
-            if (shouldGenerateExcerpt) lastExcerptGenerationTime.set(documentName, now)
-            if (shouldGenerateEmbedding) lastEmbeddingGenerationTime.set(documentName, now)
-
-            // 抛出后台任务，不加 await，不阻塞主流程
-            generateAITasksAndSave(documentName, plainTextContent, supabase, {
-              excerpt: shouldGenerateExcerpt,
-              embedding: shouldGenerateEmbedding
-            })
+          // 异步触发 AI 任务 (防抖机制)
+          // 每次文档变动时，重置倒计时。只有当用户停止编辑指定时间后，才会真正触发 AI 任务
+          
+          if (excerptTimers.has(documentName)) {
+            clearTimeout(excerptTimers.get(documentName))
           }
+          excerptTimers.set(
+            documentName,
+            setTimeout(() => {
+              generateAITasksAndSave(documentName, plainTextContent, supabase, {
+                excerpt: true,
+                embedding: false
+              })
+              excerptTimers.delete(documentName)
+            }, EXCERPT_GENERATION_DELAY)
+          )
+
+          if (embeddingTimers.has(documentName)) {
+            clearTimeout(embeddingTimers.get(documentName))
+          }
+          embeddingTimers.set(
+            documentName,
+            setTimeout(() => {
+              generateAITasksAndSave(documentName, plainTextContent, supabase, {
+                excerpt: false,
+                embedding: true
+              })
+              embeddingTimers.delete(documentName)
+            }, EMBEDDING_GENERATION_DELAY)
+          )
 
           // 更新数据库，保存二进制状态、JSON 内容、纯文本 (摘要字段由 AI 异步更新)
           const { error } = await supabase
