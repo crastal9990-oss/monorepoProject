@@ -1,13 +1,14 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { uploadImage, revalidateAfterEdit } from "@/actions/document"
-import { toast } from '@repo/ui'
+import { uploadImage, revalidateAfterEdit, moveDocumentToFolder } from "@/actions/document"
+import { getFolderList } from "@/actions/folder"
+import { toast, Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@repo/ui'
 import { CollaborativeEditor } from '@repo/editor'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Users, Sparkles } from 'lucide-react'
+import { ChevronLeft, Users, Sparkles, Folder } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
-import { useSearchParams } from 'next/navigation' //引入读取 URL 参数的钩子
+import { useSearchParams } from 'next/navigation'
 import ShareButton from './share-button'
 import { AiAssistantPanel } from '@/components/layout/ai'
 import { TableOfContents } from '@/components/layout/TableOfContents'
@@ -21,6 +22,7 @@ interface DocumentEditorProps {
     share_token: string
     share_permission: string
     user_id: string
+    folder_id: string | null
   }
 }
 
@@ -44,8 +46,35 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   const [isSynced, setIsSynced] = useState(false)
   const [editorInstance, setEditorInstance] = useState<any>(null)
 
+  const [folderId, setFolderId] = useState<string | null>(initialDocument.folder_id || null)
+  const [folders, setFolders] = useState<any[]>([])
+
   const isOwner = currentUserId === initialDocument.user_id
   const isEditable = isOwner || initialDocument.share_permission === 'editor'
+
+  // 加载用户文件夹列表
+  useEffect(() => {
+    getFolderList().then((res) => {
+      if (res.success && res.data) {
+        setFolders(res.data)
+      }
+    })
+  }, [])
+
+  const handleFolderChange = async (newFolderId: string) => {
+    const targetFolderId = newFolderId === "root" ? null : newFolderId
+    setFolderId(targetFolderId)
+    const res = await moveDocumentToFolder(initialDocument.id, targetFolderId)
+    if (res.success) {
+      toast.success("成功移动文档")
+      window.dispatchEvent(new CustomEvent('document-moved', {
+        detail: { id: initialDocument.id, folder_id: targetFolderId }
+      }))
+    } else {
+      toast.error(res.error || "移动文档失败")
+      setFolderId(initialDocument.folder_id || null)
+    }
+  }
 
   // ── 获取 Supabase Session Token，用于 Hocuspocus 鉴权 ──────────────────────
   useEffect(() => {
@@ -96,6 +125,11 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
     setSaveStatus('saving')
     if (titleSaveTimer.current) clearTimeout(titleSaveTimer.current)
+
+    // 发送全局事件，让侧边栏等其他组件能够实时同步标题
+    window.dispatchEvent(new CustomEvent('document-updated', {
+      detail: { id: initialDocument.id, title }
+    }))
 
     titleSaveTimer.current = setTimeout(async () => {
       try {
@@ -158,11 +192,10 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
               {/* AI 助手触发按钮 */}
               <button
                 onClick={() => setIsAiOpen(!isAiOpen)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all shadow-sm ${
-                  isAiOpen 
-                    ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/95' 
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all shadow-sm ${isAiOpen
+                    ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/95'
                     : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground border-border/80'
-                }`}
+                  }`}
               >
                 <Sparkles className={`h-3.5 w-3.5 ${isAiOpen ? 'text-amber-300' : 'text-amber-500'}`} />
                 AI 助手
@@ -192,11 +225,35 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
               <div className="flex items-center gap-3">
                 <span>ID: {initialDocument.id.split('-')[0]}</span>
                 {isOwner && (
-                  <ShareButton
-                    documentId={initialDocument.id}
-                    initialPermission={initialDocument.share_permission || 'none'}
-                    shareToken={initialDocument.share_token}
-                  />
+                  <>
+                    <ShareButton
+                      documentId={initialDocument.id}
+                      initialPermission={initialDocument.share_permission || 'none'}
+                      shareToken={initialDocument.share_token}
+                    />
+
+                    {/* 文件夹选择器 */}
+                    <div className="flex items-center gap-1.5 pl-2 border-l border-border/50 text-[13px] font-sans">
+                      <Folder className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <Select
+                        value={folderId || "root"}
+                        onValueChange={(value) => handleFolderChange(value)}
+                        disabled={!isEditable}
+                      >
+                        <SelectTrigger className="h-auto p-0 bg-transparent border-none outline-none text-muted-foreground hover:text-foreground focus:ring-0 shadow-none text-[13px] max-w-[120px] gap-1 data-[state=open]:text-foreground [&>svg]:opacity-50">
+                          <SelectValue placeholder="选择分类" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="root">未分类</SelectItem>
+                          {folders.map(f => (
+                            <SelectItem key={f.id} value={f.id}>
+                              {f.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
                 )}
                 {!isEditable && (
                   <span className="px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground font-medium">只读模式</span>
@@ -231,7 +288,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
                     </div>
                   </div>
                 )}
-                
+
                 {/* 真正的编辑器，等同步完成后平滑显示出来 */}
                 <div className={`transition-opacity duration-300 ${isSynced ? 'opacity-100' : 'opacity-0'}`}>
                   <CollaborativeEditor

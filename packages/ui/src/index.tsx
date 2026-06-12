@@ -14,3 +14,4 @@ export * from "./components/tooltip"
 export * from "./components/alert-dialog"
 export * from "./components/drawer"
 export * from './components/scroll-area'
+export * from './components/select'

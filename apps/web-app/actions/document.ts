@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 
 // 新建笔记
-export async function createNewDocument() {
+export async function createNewDocument(folderId?: string) {
     const supabase = createClient()
 
     // 获取当前登录用户
@@ -20,7 +20,8 @@ export async function createNewDocument() {
             {
                 user_id: user.id,
                 title: '',
-                excerpt: '开始你的记录...'
+                excerpt: '开始你的记录...',
+                folder_id: folderId || null
             }
         ])
         .select()
@@ -62,14 +63,39 @@ export async function createNewDocument() {
 //     return { success: true, status: 200 }
 // }
 
+export async function renameDocument(id: string, newTitle: string) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: '未登录', status: 401 }
+    
+    const { error } = await supabase
+        .from('documents')
+        .update({ title: newTitle, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        
+    if (error) return { error: '重命名失败', status: 500 }
+    revalidatePath('/notes')
+    return { success: true, status: 200 }
+}
+
 // 获取笔记列表
-export async function getDocumentList(limit?: number) {
+export async function getDocumentList(limit?: number, folderId?: string | null) {
     const supabase = createClient()
     let query = supabase
         .from('documents')
         .select('*')
         .eq('is_trashed', false)
-        .order('updated_at', { ascending: false })
+
+    if (folderId !== undefined) {
+        if (folderId === null) {
+            query = query.is('folder_id', null)
+        } else {
+            query = query.eq('folder_id', folderId)
+        }
+    }
+
+    query = query.order('updated_at', { ascending: false })
 
     if (limit) {
         query = query.limit(limit)
@@ -176,4 +202,31 @@ export async function updateSharePermission(
 
     if (error) throw error
     return data
+}
+
+// 移动笔记到指定文件夹
+export async function moveDocumentToFolder(documentId: string, folderId: string | null) {
+    const supabase = createClient()
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (!user || authError) {
+        return { error: '未登录或登录状态已过期', status: 401 }
+    }
+
+    const { error } = await supabase
+        .from('documents')
+        .update({
+            folder_id: folderId,
+            updated_at: new Date().toISOString()
+        })
+        .eq('id', documentId)
+        .eq('user_id', user.id)
+
+    if (error) {
+        console.error("移动文档失败:", error)
+        return { error: '移动笔记失败', status: 500 }
+    }
+
+    revalidatePath('/notes')
+    return { success: true, status: 200 }
 }

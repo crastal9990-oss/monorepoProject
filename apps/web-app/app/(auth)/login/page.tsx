@@ -17,7 +17,7 @@ const emailSchema = z.object({
     password: z.string().min(6, "密码至少需要 6 个字符。"),
 })
 
-export default function LoginPage() {
+function LoginForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const nextUrl = searchParams.get('next')
@@ -127,7 +127,7 @@ export default function LoginPage() {
 
                     {/* 第三方快捷登录 */}
                     <div className="grid grid-cols-2 gap-4">
-                        <form action={signInWithGithub}>
+                        <form action={signInWithGithub as any}>
                             {nextUrl && <input type="hidden" name="next" value={nextUrl} />}
                             <Button variant="outline" className="w-full bg-background/50 hover:bg-background/90" type="submit">
                                 <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="github" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512">
@@ -136,7 +136,7 @@ export default function LoginPage() {
                                 GitHub
                             </Button>
                         </form>
-                        <form action={signInWithGoogle}>
+                        <form action={signInWithGoogle as any}>
                             {nextUrl && <input type="hidden" name="next" value={nextUrl} />}
                             <Button variant="outline" className="w-full bg-background/50 hover:bg-background/90" type="submit">
                                 <svg className="mr-2 h-4 w-4" aria-hidden="true" focusable="false" data-prefix="fab" data-icon="google" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 488 512">
@@ -156,5 +156,17 @@ export default function LoginPage() {
                 </p>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <React.Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-background text-sm text-muted-foreground">
+                正在加载...
+            </div>
+        }>
+            <LoginForm />
+        </React.Suspense>
     )
 }

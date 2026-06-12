@@ -1,6 +1,7 @@
 "use client"
 
 import { useEditor, EditorContent, Extension } from '@tiptap/react'
+// @ts-ignore
 import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -563,7 +564,7 @@ export function CollaborativeEditor({
           <BubbleMenu
             editor={editor}
             options={{ placement: 'top' }}
-            shouldShow={({ from, to }) => from !== to && !editor.isActive('image') && !aiPreviewState}
+            shouldShow={({ from, to }: { from: number; to: number }) => from !== to && !editor.isActive('image') && !aiPreviewState}
             className="flex items-center gap-0.5 bg-background border border-border shadow-xl rounded-xl overflow-visible p-1.5 z-50"
           >
             {/* 标题 */}

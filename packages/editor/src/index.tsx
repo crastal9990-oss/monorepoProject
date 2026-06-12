@@ -1,6 +1,7 @@
 "use client"
 
 import { useEditor, EditorContent, Extension } from '@tiptap/react'
+// @ts-ignore
 import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -199,7 +200,7 @@ export function Editor({ content, onChange, uploadFn, className, placeholder }: 
           <BubbleMenu
             editor={editor}
             options={{ placement: 'top' }}
-            shouldShow={({ state, from, to }) => {
+            shouldShow={({ state, from, to }: { state: any; from: number; to: number }) => {
               // 只有当选区有长度（选了字），并且当前激活的节点不是图片时，才显示菜单
               return from !== to && !editor.isActive('image');
             }}
