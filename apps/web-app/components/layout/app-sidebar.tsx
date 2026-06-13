@@ -13,6 +13,7 @@ import {
 import { getFolderList, createFolder, renameFolder, deleteFolder } from "@/actions/folder"
 import { getDocumentList, renameDocument, deleteDocument } from "@/actions/document"
 import { createClient } from "@/utils/supabase/client"
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@repo/ui"
 
 const navMain = [
     { title: "工作主页", url: "/dashboard", icon: Home },
@@ -490,23 +491,32 @@ function AppSidebarInner() {
                                                                                     />
                                                                                 </div>
                                                                             ) : (
-                                                                                <SidebarMenuSubButton
-                                                                                    asChild
-                                                                                    isActive={isDocActive}
-                                                                                    className={`transition-all duration-300 pr-12 ${isDocActive
-                                                                                        ? "bg-accent text-accent-foreground font-semibold shadow-sm"
-                                                                                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                                                                        } ${(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? "opacity-50 pointer-events-none" : ""}`}
-                                                                                >
-                                                                                    <Link href={`/notes/${doc.id}`} className="flex items-center gap-2 w-full">
-                                                                                        {(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? (
-                                                                                            <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0" />
-                                                                                        ) : (
-                                                                                            <FileText className="size-3.5 text-muted-foreground shrink-0" />
-                                                                                        )}
-                                                                                        <span className="text-xs font-medium tracking-wide truncate">{doc.title || "无标题"}</span>
-                                                                                    </Link>
-                                                                                </SidebarMenuSubButton>
+                                                                                <TooltipProvider>
+                                                                                        <Tooltip>
+                                                                                        <TooltipTrigger asChild>
+                                                                                            <SidebarMenuSubButton
+                                                                                                asChild
+                                                                                                isActive={isDocActive}
+                                                                                                className={`transition-all duration-300 pr-12 ${isDocActive
+                                                                                                    ? "bg-accent text-accent-foreground font-semibold shadow-sm"
+                                                                                                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                                                                    } ${(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? "opacity-50 pointer-events-none" : ""}`}
+                                                                                            >
+                                                                                                <Link href={`/notes/${doc.id}`} className="flex items-center gap-2 w-full">
+                                                                                                    {(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? (
+                                                                                                        <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0" />
+                                                                                                    ) : (
+                                                                                                        <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                                                                                    )}
+                                                                                                    <span className="text-xs font-medium tracking-wide truncate">{doc.title || "无标题"}</span>
+                                                                                                </Link>
+                                                                                            </SidebarMenuSubButton>
+                                                                                        </TooltipTrigger>
+                                                                                        <TooltipContent side="bottom">
+                                                                                            {doc.title || "无标题"}
+                                                                                        </TooltipContent>
+                                                                                    </Tooltip>
+                                                                                </TooltipProvider>
                                                                             )}
 
                                                                             {!isDocEditing && (
@@ -574,26 +584,35 @@ function AppSidebarInner() {
                                                             />
                                                         </div>
                                                     ) : (
-                                                        <SidebarMenuButton
-                                                            asChild
-                                                            isActive={isDocActive}
-                                                            className={`transition-all duration-300 pr-12 ${isDocActive
-                                                                ? "bg-accent text-accent-foreground font-semibold shadow-sm"
-                                                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                                                } ${(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? "opacity-50 pointer-events-none" : ""}`}
-                                                        >
-                                                            <div className="flex items-center w-full">
-                                                                <div className="size-3.5 p-0.5 -ml-1 mr-1 shrink-0" />
-                                                                <Link href={`/notes/${doc.id}`} className="flex items-center gap-2 flex-1 min-w-0">
-                                                                    {(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? (
-                                                                        <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0" />
-                                                                    ) : (
-                                                                        <FileText className="size-3.5 text-muted-foreground shrink-0" />
-                                                                    )}
-                                                                    <span className="text-[13px] font-medium tracking-wide truncate">{doc.title || "无标题"}</span>
-                                                                </Link>
-                                                            </div>
-                                                        </SidebarMenuButton>
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <SidebarMenuButton
+                                                                        asChild
+                                                                        isActive={isDocActive}
+                                                                        className={`transition-all duration-300 pr-12 ${isDocActive
+                                                                            ? "bg-accent text-accent-foreground font-semibold shadow-sm"
+                                                                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                                                            } ${(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? "opacity-50 pointer-events-none" : ""}`}
+                                                                    >
+                                                                        <div className="flex items-center w-full">
+                                                                            <div className="size-3.5 p-0.5 -ml-1 mr-1 shrink-0" />
+                                                                            <Link href={`/notes/${doc.id}`} className="flex items-center gap-2 flex-1 min-w-0">
+                                                                                {(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? (
+                                                                                    <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0" />
+                                                                                ) : (
+                                                                                    <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                                                                )}
+                                                                                <span className="text-[13px] font-medium tracking-wide truncate">{doc.title || "无标题"}</span>
+                                                                            </Link>
+                                                                        </div>
+                                                                    </SidebarMenuButton>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="bottom">
+                                                                    {doc.title || "无标题"}
+                                                                </TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
                                                     )}
 
                                                     {!isDocEditing && (
