@@ -26,6 +26,8 @@ interface DocumentEditorProps {
     folder_id: string | null
     is_word_raw?: boolean
     word_file_url?: string | null
+    is_pdf_raw?: boolean
+    pdf_file_url?: string | null
   }
 }
 
@@ -228,8 +230,8 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
   return (
     <div className="flex h-[calc(100vh-56px)] lg:h-[calc(100vh-60px)] w-full overflow-hidden bg-background">
-      {/* 侧边目录 (左侧)，未同步完成时隐藏以避免闪烁。若是 Word 原始预览状态则隐藏 */}
-      {!initialDocument.is_word_raw && (
+      {/* 侧边目录 (左侧)，未同步完成时隐藏以避免闪烁。若是 Word 原始预览状态或 PDF 原始状态则隐藏 */}
+      {!initialDocument.is_word_raw && !initialDocument.is_pdf_raw && (
         <div className={`shrink-0 h-full transition-opacity duration-300 ${isSynced ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
           <TableOfContents editor={editorInstance} />
         </div>
@@ -238,7 +240,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
       {/* 编辑器主体区域 */}
       <div
         id="editor-scroll-container"
-        className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-300 relative ${initialDocument.is_word_raw ? 'overflow-hidden' : 'overflow-y-auto'
+        className={`flex-1 flex flex-col h-full min-w-0 transition-all duration-300 relative ${initialDocument.is_word_raw || initialDocument.is_pdf_raw ? 'overflow-hidden' : 'overflow-y-auto'
           }`}
       >
         {initialDocument.is_word_raw ? (
@@ -282,6 +284,49 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
                 src={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(initialDocument.word_file_url || "")}`}
                 className="w-full h-full border-0 absolute inset-0"
                 title="Word Preview"
+              />
+            </div>
+          </div>
+        ) : initialDocument.is_pdf_raw ? (
+          // PDF 预览模式
+          <div className="flex flex-col h-full w-full relative">
+            {/* 极简顶栏：融合返回按钮、文件名展示和“在新标签页打开”操作按钮 (全宽) */}
+            <div className="w-full bg-background border-b border-border/80 px-6 lg:px-10 py-3 flex items-center justify-between gap-4 shrink-0 shadow-sm z-20">
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  onClick={handleBack}
+                  className="flex items-center text-muted-foreground hover:text-foreground transition-colors text-sm shrink-0 mr-1 font-medium"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  返回
+                </button>
+                <div className="h-4 w-px bg-border shrink-0" />
+                <FileText className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-sm font-semibold text-foreground truncate max-w-[200px] sm:max-w-[400px]">
+                  {title}
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] bg-muted text-muted-foreground font-medium shrink-0">
+                  PDF 预览
+                </span>
+              </div>
+
+              <Button
+                asChild
+                variant="outline"
+                className="shrink-0 font-medium text-xs px-4 py-2 rounded-lg gap-2 shadow-sm flex items-center h-8"
+              >
+                <a href={initialDocument.pdf_file_url || ""} target="_blank" rel="noopener noreferrer">
+                  在新标签页打开
+                </a>
+              </Button>
+            </div>
+
+            {/* 全屏 Iframe 容器 */}
+            <div className="flex-1 w-full bg-muted/5 relative">
+              <iframe
+                src={initialDocument.pdf_file_url || ""}
+                className="w-full h-full border-0 absolute inset-0"
+                title="PDF Preview"
               />
             </div>
           </div>

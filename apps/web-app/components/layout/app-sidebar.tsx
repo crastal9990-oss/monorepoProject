@@ -506,7 +506,7 @@ function AppSidebarInner() {
                                                                                 </div>
                                                                             ) : (
                                                                                 <TooltipProvider>
-                                                                                        <Tooltip>
+                                                                                    <Tooltip>
                                                                                         <TooltipTrigger asChild>
                                                                                             <SidebarMenuSubButton
                                                                                                 asChild

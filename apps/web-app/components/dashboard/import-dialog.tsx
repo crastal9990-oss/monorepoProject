@@ -97,16 +97,17 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     const isMd = file.name.endsWith(".md") || file.name.endsWith(".markdown")
     const isTxt = file.name.endsWith(".txt")
     const isDocx = file.name.endsWith(".docx")
+    const isPdf = file.name.endsWith(".pdf")
 
-    if (!isMd && !isTxt && !isDocx) {
-      toast.error("仅支持导入 .md, .markdown, .txt 或 .docx 格式的文件")
+    if (!isMd && !isTxt && !isDocx && !isPdf) {
+      toast.error("仅支持导入 .md, .markdown, .txt, .docx 或 .pdf 格式的文件")
       return
     }
 
     setSelectedFile(file)
 
     // 设置默认标题（移除文件后缀）
-    const baseName = file.name.replace(/\.(md|markdown|txt|docx)$/i, "")
+    const baseName = file.name.replace(/\.(md|markdown|txt|docx|pdf)$/i, "")
     setFileTitle(baseName)
 
     if (isDocx) {
@@ -129,6 +130,8 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
         }
       }
       reader.readAsArrayBuffer(file)
+    } else if (isPdf) {
+      setFileContent("")
     } else {
       const reader = new FileReader()
       reader.onload = (e) => {
@@ -180,7 +183,9 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
     const content = isFile ? fileContent : clipboardText
     const title = isFile ? fileTitle.trim() : clipboardTitle.trim()
 
-    if (!content.trim()) {
+    const isPdf = isFile && selectedFile?.name.endsWith(".pdf")
+
+    if (!isPdf && !content.trim()) {
       toast.error("导入的文本内容不能为空")
       return
     }
@@ -228,14 +233,14 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
           htmlContent = await docxPromise
           plainText = extractPlainTextFromHtml(htmlContent)
         }
-      } else {
+      } else if (!isPdf) {
         htmlContent = isMarkdown ? convertMarkdownToHtml(content) : convertTxtToHtml(content)
         plainText = extractPlainTextFromMarkdown(content)
       }
 
       // 2. 向数据库插入新文稿元数据
       const finalTitle = title || (isFile ? "未命名导入文件" : "未命名剪贴板导入")
-      const finalExcerpt = plainText.slice(0, 120).trim()
+      const finalExcerpt = isPdf ? `PDF 文档 - ${finalTitle}` : plainText.slice(0, 120).trim()
 
       const { data, error } = await supabase
         .from("documents")
@@ -245,7 +250,9 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
             title: finalTitle,
             excerpt: finalExcerpt || "开始你的记录...",
             is_word_raw: isWordPreview,
-            word_file_url: null
+            word_file_url: null,
+            is_pdf_raw: isPdf,
+            pdf_file_url: null
           }
         ])
         .select()
@@ -253,7 +260,30 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
 
       if (error || !data) throw error
 
-      if (isWordPreview && selectedFile) {
+      if (isPdf && selectedFile) {
+        // 上传原始 pdf 到 Storage 桶 notes-images
+        const filePath = `pdf_files/${user.id}/${data.id}.pdf`
+        const { error: uploadError } = await supabase.storage
+          .from("notes-images")
+          .upload(filePath, selectedFile, {
+            cacheControl: "3600",
+            upsert: true
+          })
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("notes-images")
+          .getPublicUrl(filePath)
+
+        const { error: updateError } = await supabase
+          .from("documents")
+          .update({ pdf_file_url: publicUrl })
+          .eq("id", data.id)
+
+        if (updateError) throw updateError
+
+        data.pdf_file_url = publicUrl
+      } else if (isWordPreview && selectedFile) {
         // 上传原始 docx 到 Storage 桶 notes-images
         const filePath = `word_files/${user.id}/${data.id}.docx`
         const { error: uploadError } = await supabase.storage
@@ -345,7 +375,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileChange}
-                    accept=".md,.markdown,.txt,.docx"
+                    accept=".md,.markdown,.txt,.docx,.pdf"
                     className="hidden"
                   />
                   <div className="p-4 bg-muted rounded-full text-muted-foreground mb-4 group-hover:text-primary transition-colors">
@@ -355,7 +385,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                     拖拽文件到此处，或 点击上传
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    仅支持 .md、.txt、.docx 格式
+                    仅支持 .md、.txt、.docx、.pdf 格式
                   </p>
                 </div>
               ) : (
