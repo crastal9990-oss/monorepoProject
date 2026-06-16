@@ -22,6 +22,32 @@ import {
 } from "@repo/ui"
 import { createClient } from "@/utils/supabase/client"
 
+// 动态加载 mammoth.js 用于客户端解析 .docx 文件
+const loadMammoth = (): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("window is undefined"))
+      return
+    }
+    const globalWindow = window as any
+    if (globalWindow.mammoth) {
+      resolve(globalWindow.mammoth)
+      return
+    }
+    const script = document.createElement("script")
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"
+    script.onload = () => {
+      if (globalWindow.mammoth) {
+        resolve(globalWindow.mammoth)
+      } else {
+        reject(new Error("mammoth is not defined on window after script load"))
+      }
+    }
+    script.onerror = () => reject(new Error("Failed to load mammoth.js library"))
+    document.head.appendChild(script)
+  })
+}
+
 interface ImportDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -87,32 +113,55 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
   const validateAndReadFile = (file: File) => {
     const isMd = file.name.endsWith(".md") || file.name.endsWith(".markdown")
     const isTxt = file.name.endsWith(".txt")
+    const isDocx = file.name.endsWith(".docx")
 
-    if (!isMd && !isTxt) {
-      toast.error("仅支持导入 .md, .markdown 或 .txt 格式的文件")
+    if (!isMd && !isTxt && !isDocx) {
+      toast.error("仅支持导入 .md, .markdown, .txt 或 .docx 格式的文件")
       return
     }
 
     setSelectedFile(file)
 
     // 设置默认标题（移除文件后缀）
-    const baseName = file.name.replace(/\.(md|markdown|txt)$/i, "")
+    const baseName = file.name.replace(/\.(md|markdown|txt|docx)$/i, "")
     setFileTitle(baseName)
 
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const text = e.target?.result as string
-      setFileContent(text)
-
-      // 如果是 Markdown 且包含一级标题，提取其内容作为文档标题
-      if (isMd) {
-        const firstHeadingMatch = text.match(/^#\s+(.+)$/m)
-        if (firstHeadingMatch && firstHeadingMatch[1]) {
-          setFileTitle(firstHeadingMatch[1].trim())
+    if (isDocx) {
+      setIsPending(true)
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        try {
+          const arrayBuffer = e.target?.result as ArrayBuffer
+          const mammothInstance = await loadMammoth()
+          const result = await mammothInstance.convertToHtml({ arrayBuffer })
+          setFileContent(result.value)
+        } catch (err) {
+          console.error("解析 docx 文件失败", err)
+          toast.error("解析 Word 文档失败，请检查文件格式或重试")
+          setSelectedFile(null)
+          setFileContent("")
+          setFileTitle("")
+        } finally {
+          setIsPending(false)
         }
       }
+      reader.readAsArrayBuffer(file)
+    } else {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const text = e.target?.result as string
+        setFileContent(text)
+
+        // 如果是 Markdown 且包含一级标题，提取其内容作为文档标题
+        if (isMd) {
+          const firstHeadingMatch = text.match(/^#\s+(.+)$/m)
+          if (firstHeadingMatch && firstHeadingMatch[1]) {
+            setFileTitle(firstHeadingMatch[1].trim())
+          }
+        }
+      }
+      reader.readAsText(file)
     }
-    reader.readAsText(file)
   }
 
   // 剪贴板处理
@@ -164,10 +213,20 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
         return
       }
 
-      // 1. 将 Markdown/TXT 内容转换为 HTML
+      // 1. 将 Markdown/TXT/DOCX 内容转换为 HTML
+      const isDocx = isFile && selectedFile?.name.endsWith(".docx")
       const isMarkdown = isFile ? (selectedFile?.name.endsWith(".md") || selectedFile?.name.endsWith(".markdown")) : true // 剪贴板内容默认视作 Markdown/富文本
-      const htmlContent = isMarkdown ? convertMarkdownToHtml(content) : convertTxtToHtml(content)
-      const plainText = extractPlainTextFromMarkdown(content)
+      
+      let htmlContent = ""
+      let plainText = ""
+
+      if (isDocx) {
+        htmlContent = content
+        plainText = extractPlainTextFromHtml(content)
+      } else {
+        htmlContent = isMarkdown ? convertMarkdownToHtml(content) : convertTxtToHtml(content)
+        plainText = extractPlainTextFromMarkdown(content)
+      }
 
       // 2. 向数据库插入新文稿元数据（正文将由协作编辑器通过 sessionStorage 在挂载时同步写入）
       const finalTitle = title || (isFile ? "未命名导入文件" : "未命名剪贴板导入")
@@ -194,10 +253,12 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
       sessionStorage.setItem(`import_content_${data.id}`, htmlContent)
 
       toast.success("导入成功，正在进入编辑器...")
-      onOpenChange(false)
 
-      // 5. 跳转至编辑器页面
+      // 5. 先跳转至编辑器页面
       router.push(`/notes/${data.id}`)
+
+      // 6. 关闭对话框
+      onOpenChange(false)
     } catch (err: any) {
       console.error(err)
       toast.error(err.message || "导入失败，请稍后重试")
@@ -250,7 +311,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileChange}
-                    accept=".md,.markdown,.txt"
+                    accept=".md,.markdown,.txt,.docx"
                     className="hidden"
                   />
                   <div className="p-3 bg-muted rounded-full text-muted-foreground mb-4 group-hover:text-foreground transition-colors">
@@ -548,5 +609,19 @@ function extractPlainTextFromMarkdown(markdown: string): string {
     .replace(/^\s*\d+\.\s+/gm, "")
 
   // 移除多余换行并格式化空格
+  return text.replace(/\s+/g, " ").trim()
+}
+
+function extractPlainTextFromHtml(html: string): string {
+  // 移除所有 HTML 标签
+  let text = html.replace(/<[^>]*>/g, " ")
+  // 转义常见 HTML 实体
+  text = text
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
   return text.replace(/\s+/g, " ").trim()
 }
