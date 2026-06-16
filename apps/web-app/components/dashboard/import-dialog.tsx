@@ -207,155 +207,149 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="sm:max-w-[550px] p-6 gap-6 rounded-2xl border border-border/50 bg-background shadow-xl">
-        <AlertDialogHeader className="relative flex flex-row items-center justify-between pb-2 border-b border-border/40 space-y-0">
-          <div>
-            <AlertDialogTitle className="text-xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
-              导入外部数据
-            </AlertDialogTitle>
-            {/* <AlertDialogDescription className="text-[13px] text-muted-foreground mt-1.5">
-              支持解析本地 Markdown、TXT、word、pdf 文件，或直接从系统剪贴板生成。
-            </AlertDialogDescription> */}
-          </div>
+      <AlertDialogContent className="sm:max-w-[550px] p-6 gap-0 rounded-2xl border bg-background shadow-xl">
+        <AlertDialogHeader className="relative flex flex-row items-center justify-between pb-6 space-y-0">
+          <AlertDialogTitle className="text-xl font-bold text-foreground">
+            导入外部数据
+          </AlertDialogTitle>
           <button
             onClick={() => onOpenChange(false)}
-            className="absolute right-0 top-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-300"
+            className="absolute right-0 top-0 p-1 rounded-md text-muted-foreground hover:bg-muted transition-colors"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </AlertDialogHeader>
 
         <Tabs defaultValue="file" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/50 rounded-xl mb-5">
-            <TabsTrigger value="file" className="rounded-lg py-2 text-xs font-semibold gap-2">
-              <Upload className="h-3.5 w-3.5" />
+          <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/60 rounded-lg mb-6">
+            <TabsTrigger value="file" className="rounded-md py-2 text-sm font-medium gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Upload className="h-4 w-4" />
               本地文件导入
             </TabsTrigger>
-            <TabsTrigger value="clipboard" className="rounded-lg py-2 text-xs font-semibold gap-2">
-              <Clipboard className="h-3.5 w-3.5" />
+            <TabsTrigger value="clipboard" className="rounded-md py-2 text-sm font-medium gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Clipboard className="h-4 w-4" />
               系统剪贴板生成
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="file" className="space-y-4 focus-visible:outline-none">
-            {/* 拖拽区域 */}
-            {!selectedFile ? (
-              <div
-                onDragEnter={handleDrag}
-                onDragOver={handleDrag}
-                onDragLeave={handleDrag}
-                onDrop={handleDrop}
-                onClick={() => fileInputRef.current?.click()}
-                className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 cursor-pointer transition-all duration-500 min-h-[160px] group ${dragActive
-                  ? "border-primary bg-primary/5 shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] scale-[0.99]"
-                  : "border-border/60 hover:border-foreground/40 hover:bg-muted/15"
-                  }`}
-              >
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".md,.markdown,.txt"
-                  className="hidden"
-                />
-                <div className="p-3 bg-muted/60 rounded-full text-muted-foreground group-hover:text-foreground group-hover:scale-110 group-hover:bg-muted transition-all duration-500">
-                  <Upload className="h-5 w-5" />
-                </div>
-                <p className="text-[13px] font-semibold text-foreground/80 mt-3 text-center">
-                  拖拽文件到此处，或 <span className="text-primary hover:underline">点击上传</span>
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-1.5">
-                  仅支持 .md、.markdown、.txt、.docx、.pdf 格式
-                </p>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between border border-border/80 bg-muted/15 rounded-xl p-4 transition-all duration-300">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-primary/10 rounded-lg text-primary">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-0.5 max-w-[280px] sm:max-w-[340px]">
-                    <p className="text-[13px] font-medium text-foreground truncate">
-                      {selectedFile.name}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground font-mono">
-                      {(selectedFile.size / 1024).toFixed(1)} KB
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedFile(null)
-                    setFileContent("")
-                    setFileTitle("")
-                    if (fileInputRef.current) fileInputRef.current.value = ""
-                  }}
-                  className="h-8 px-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          <div className="h-[260px] w-full">
+            <TabsContent value="file" className="h-full mt-0 focus-visible:outline-none">
+              {!selectedFile ? (
+                <div
+                  onDragEnter={handleDrag}
+                  onDragOver={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex flex-col items-center justify-center h-full border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 group ${dragActive
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-muted-foreground/50 hover:bg-muted/30"
+                    }`}
                 >
-                  清除
-                </Button>
-              </div>
-            )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept=".md,.markdown,.txt"
+                    className="hidden"
+                  />
+                  <div className="p-3 bg-muted rounded-full text-muted-foreground mb-4 group-hover:text-foreground transition-colors">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground mb-2">
+                    拖拽文件到此处，或 点击上传
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    仅支持 .md、.markdown、.txt、.docx、.pdf 格式
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col h-full justify-center gap-6">
+                  <div className="flex items-center justify-between border border-border bg-muted/30 rounded-xl p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 bg-background rounded-lg shadow-sm text-primary">
+                        <FileText className="h-6 w-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground truncate max-w-[250px]">
+                          {selectedFile.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {(selectedFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedFile(null)
+                        setFileContent("")
+                        setFileTitle("")
+                        if (fileInputRef.current) fileInputRef.current.value = ""
+                      }}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      清除
+                    </Button>
+                  </div>
 
-            {/* 文档标题输入框 */}
-            {selectedFile && (
-              <div className="space-y-2">
-                <label className="text-[12px] font-semibold text-muted-foreground">文档标题</label>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-foreground">文档标题</label>
+                    <Input
+                      type="text"
+                      placeholder="请输入文档标题"
+                      value={fileTitle}
+                      onChange={(e) => setFileTitle(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="clipboard" className="flex flex-col h-full mt-0 gap-4 focus-visible:outline-none">
+              <div className="flex gap-3">
                 <Input
                   type="text"
-                  placeholder="请输入文档标题"
-                  value={fileTitle}
-                  onChange={(e) => setFileTitle(e.target.value)}
-                  className="h-9 text-[13px]"
+                  placeholder="请输入文档标题（选填）"
+                  value={clipboardTitle}
+                  onChange={(e) => setClipboardTitle(e.target.value)}
+                  className="h-10 flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleReadClipboard}
+                  className="h-10 px-4 gap-2 font-medium"
+                >
+                  <Clipboard className="h-4 w-4" />
+                  读取剪贴板
+                </Button>
+              </div>
+
+              <div className="flex-1 flex flex-col space-y-2 min-h-0">
+                <label className="text-sm font-medium text-muted-foreground">粘贴文本内容</label>
+                <textarea
+                  placeholder="在此粘贴或输入 Markdown / 纯文本内容..."
+                  value={clipboardText}
+                  onChange={(e) => setClipboardText(e.target.value)}
+                  className="flex-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
                 />
               </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="clipboard" className="space-y-4 focus-visible:outline-none">
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="请输入文档标题（选填）"
-                value={clipboardTitle}
-                onChange={(e) => setClipboardTitle(e.target.value)}
-                className="h-9 text-[13px]"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleReadClipboard}
-                className="h-9 px-3 gap-1.5 shrink-0 text-xs font-medium border-border/80 hover:bg-muted"
-              >
-                <Clipboard className="h-3.5 w-3.5" />
-                读取剪贴板
-              </Button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[12px] font-semibold text-muted-foreground">粘贴文本内容</label>
-              <textarea
-                placeholder="在此粘贴或输入 Markdown / 纯文本内容..."
-                value={clipboardText}
-                onChange={(e) => setClipboardText(e.target.value)}
-                className="w-full min-h-[140px] rounded-xl border border-input bg-transparent px-3 py-2.5 text-[13px] shadow-sm transition-all focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-              />
-            </div>
-          </TabsContent>
+            </TabsContent>
+          </div>
         </Tabs>
 
-        <AlertDialogFooter className="border-t border-border/40 pt-4 flex flex-row items-center justify-end gap-2 space-y-0">
+        <AlertDialogFooter className="pt-6 flex flex-row items-center justify-end gap-3 space-y-0">
           <AlertDialogCancel asChild>
             <Button
               type="button"
               variant="outline"
               disabled={isPending}
               onClick={() => onOpenChange(false)}
-              className="h-9 px-4 text-xs font-semibold"
+              className="h-10 px-6 font-medium border-border"
             >
               取消
             </Button>
@@ -364,11 +358,11 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
             type="button"
             disabled={isPending || (activeTab === "file" ? !selectedFile : !clipboardText.trim())}
             onClick={handleImport}
-            className="h-9 px-5 text-xs font-semibold bg-primary hover:bg-primary/95 text-primary-foreground gap-1.5"
+            className="h-10 px-6 font-medium bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
           >
             {isPending ? (
               <>
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 导入中...
               </>
             ) : (

@@ -88,9 +88,27 @@ export default function NotesPage() {
             )
             .subscribe()
 
+        // 监听文档创建与删除全局事件，实时同步刷新文档列表
+        const handleDocCreated = () => {
+            fetchNotes()
+        }
+        const handleDocDeleted = (e: CustomEvent<{ id: string }>) => {
+            // 先在本地过滤以提供瞬时无感知更新
+            setNotes(prev => {
+                const updated = prev.filter(note => String(note.id) !== e.detail.id);
+                localStorage.setItem(`notes_cache_${folderId || 'all'}`, JSON.stringify(updated));
+                return updated;
+            });
+            // 重新拉取以确保与数据库数据完全一致
+            fetchNotes()
+        }
+        window.addEventListener('document-created', handleDocCreated as EventListener)
+        window.addEventListener('document-deleted', handleDocDeleted as EventListener)
         return () => {
             supabase.removeChannel(channelDocs)
             supabase.removeChannel(channelFolders)
+            window.removeEventListener('document-created', handleDocCreated as EventListener)
+            window.removeEventListener('document-deleted', handleDocDeleted as EventListener)
         }
     }, [folderId])
 
@@ -128,23 +146,12 @@ export default function NotesPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-
-                    <Button
-                        onClick={handleCreateDoc}
-                        disabled={isCreatingDoc}
-                        size="sm"
-                        className="h-9 px-4 text-xs gap-1.5 shadow-sm transition-all"
-                    >
+                    <Button onClick={handleCreateDoc} disabled={isCreatingDoc}
+                        size="sm" className="h-9 px-4 text-xs gap-1.5 shadow-sm transition-all">
                         {isCreatingDoc ? (
-                            <>
-                                <span className="h-3.5 w-3.5 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin shrink-0" />
-                                创建中...
-                            </>
+                            <><span className="h-3.5 w-3.5 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin shrink-0" />创建中...</>
                         ) : (
-                            <>
-                                <Plus className="h-4 w-4" />
-                                新建文档
-                            </>
+                            <><Plus className="h-4 w-4" />新建文档</>
                         )}
                     </Button>
                 </div>

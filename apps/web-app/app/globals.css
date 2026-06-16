@@ -93,3 +93,151 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+
+  /* Grid pattern base for cards */
+  .card-grid-pattern {
+    background-image: linear-gradient(to right, #8882 1px, transparent 1px), linear-gradient(to bottom, #8882 1px, transparent 1px);
+    background-size: 14px 14px;
+    mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 70%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 0%, #000 70%, transparent 100%);
+  }
+
+  /* Dashboard Action Cards */
+  .action-card-primary {
+    @apply relative overflow-hidden cursor-pointer transition-all duration-500 ease-out;
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+    border-color: transparent !important;
+    transform: translateY(0) !important;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
+    /* shadow-lg */
+  }
+
+  .group\/board:hover .action-card-primary {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border) / 0.5) !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+    /* shadow-sm */
+  }
+
+  .action-card-primary:hover,
+  .group\/board:hover .action-card-primary:hover {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+    border-color: transparent !important;
+    transform: translateY(-0.25rem) !important;
+    /* -translate-y-1 (4px) */
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+    /* shadow-2xl */
+  }
+
+  .action-card-standard {
+    @apply relative overflow-hidden cursor-pointer transition-all duration-500 ease-out;
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+    border-color: hsl(var(--border) / 0.5) !important;
+    transform: translateY(0) !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+    /* shadow-sm */
+  }
+
+  .action-card-standard:hover {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+    border-color: transparent !important;
+    transform: translateY(-0.25rem) !important;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25) !important;
+    /* shadow-2xl */
+  }
+
+  /* Grid overlay in Action Cards */
+  .action-card-grid-primary {
+    @apply absolute inset-0 card-grid-pattern transition-opacity duration-500;
+    opacity: 0.2 !important;
+  }
+
+  .group\/board:hover .action-card-grid-primary {
+    opacity: 0 !important;
+  }
+
+  .group\/card:hover .action-card-grid-primary {
+    opacity: 0.4 !important;
+  }
+
+  .action-card-grid-standard {
+    @apply absolute inset-0 card-grid-pattern transition-opacity duration-500 ease-out;
+    opacity: 0 !important;
+  }
+
+  .group\/card:hover .action-card-grid-standard {
+    opacity: 0.4 !important;
+  }
+
+  /* Icons in Action Cards */
+  .action-card-icon-primary {
+    @apply transition-transform duration-500;
+    width: 1rem !important;
+    height: 1rem !important;
+    color: hsl(var(--primary-foreground)) !important;
+    transform: scale(1) rotate(0deg) !important;
+  }
+
+  .group\/board:hover .action-card-icon-primary {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .group\/card:hover .action-card-icon-primary {
+    color: hsl(var(--primary-foreground)) !important;
+    transform: scale(1.25) rotate(12deg) !important;
+  }
+
+  .action-card-icon-standard {
+    @apply transition-all duration-500 ease-out;
+    width: 1rem !important;
+    height: 1rem !important;
+    color: hsl(var(--muted-foreground)) !important;
+    transform: scale(1) rotate(0deg) !important;
+  }
+
+  .group\/card:hover .action-card-icon-standard {
+    color: hsl(var(--primary-foreground)) !important;
+    transform: scale(1.1) !important;
+  }
+
+  .action-card-icon-loader {
+    @apply animate-spin transition-colors duration-500;
+    width: 1rem !important;
+    height: 1rem !important;
+    color: hsl(var(--primary)) !important;
+  }
+
+  .group\/card:hover .action-card-icon-loader {
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  /* Description text in Action Cards */
+  .action-card-desc-primary {
+    @apply text-[13px] leading-relaxed transition-colors duration-300;
+    color: hsl(var(--primary-foreground) / 0.7) !important;
+  }
+
+  .group\/board:hover .action-card-desc-primary {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .group\/card:hover .action-card-desc-primary {
+    color: hsl(var(--primary-foreground)) !important;
+  }
+
+  .action-card-desc-standard {
+    @apply text-[13px] leading-relaxed transition-colors duration-500 ease-out;
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .group\/card:hover .action-card-desc-standard {
+    color: hsl(var(--primary-foreground)) !important;
+  }
+}

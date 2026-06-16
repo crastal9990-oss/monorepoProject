@@ -80,9 +80,30 @@ export default function DashboardPage() {
             )
             .subscribe()
 
+        // 监听文档创建与删除全局事件，实时同步刷新最近活动列表
+        const handleDocCreated = () => {
+            fetchNotes()
+        }
+
+        const handleDocDeleted = (e: CustomEvent<{ id: string }>) => {
+            // 先在本地过滤以提供瞬时无感知更新
+            setRecentNotes(prev => {
+                const updated = prev.filter(note => String(note.id) !== e.detail.id);
+                localStorage.setItem('dashboard_recent_notes', JSON.stringify(updated));
+                return updated;
+            });
+            // 重新拉取以填补被删除卡片的空缺（保持显示最新的 4 条数据）
+            fetchNotes()
+        }
+
+        window.addEventListener('document-created', handleDocCreated as EventListener)
+        window.addEventListener('document-deleted', handleDocDeleted as EventListener)
+
         return () => {
             if (fetchTimer) clearTimeout(fetchTimer)
             supabase.removeChannel(channel)
+            window.removeEventListener('document-created', handleDocCreated as EventListener)
+            window.removeEventListener('document-deleted', handleDocDeleted as EventListener)
         }
     }, [])
 
@@ -171,49 +192,49 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* 快捷操作区 (保持不变) */}
-            <div className="grid gap-5 md:grid-cols-3">
-                <Card className="relative overflow-hidden cursor-pointer border-transparent bg-primary text-primary-foreground shadow-lg transition-all duration-500 ease-out hover:shadow-2xl hover:-translate-y-1 group">
-                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#8882_1px,transparent_1px),linear-gradient(to_bottom,#8882_1px,transparent_1px)] bg-[size:14px_14px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20 transition-opacity duration-500 group-hover:opacity-40" />
-
+            {/* 快捷操作区 */}
+            <div className="grid gap-5 md:grid-cols-3 group/board">
+                {/* 第 1 个卡片：AI 智能创作 */}
+                <Card className="action-card-primary group/card">
+                    <div className="action-card-grid-primary" />
                     <CardHeader className="relative flex flex-row items-center space-y-0 pb-2 gap-2 z-10">
-                        <Sparkles className="h-4 w-4 transition-transform duration-500 group-hover:scale-125 group-hover:rotate-12" />
+                        <Sparkles className="action-card-icon-primary" />
                         <CardTitle className="text-[15px] font-semibold tracking-wide">AI 智能创作</CardTitle>
                     </CardHeader>
                     <CardContent className="relative z-10">
-                        <div className="text-[13px] text-primary-foreground/70 leading-relaxed transition-colors duration-300 group-hover:text-primary-foreground">
+                        <div className="action-card-desc-primary">
                             输入一段灵感片段，让 AI 自动生成结构化大纲或进行文本润色。
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card onClick={handleCreateNew}
-                    className="cursor-pointer border border-border/50 bg-background shadow-sm transition-all duration-500 ease-out hover:shadow-lg hover:-translate-y-1 hover:border-foreground/50 group">
-                    <CardHeader className="flex flex-row items-center space-y-0 pb-2 gap-2">
+                <Card onClick={handleCreateNew} className="action-card-standard group/card">
+                    <div className="action-card-grid-standard" />
+                    <CardHeader className="relative flex flex-row items-center space-y-0 pb-2 gap-2 z-10">
                         {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                            <Loader2 className="action-card-icon-loader" />
                         ) : (
-                            <FilePlus className="h-4 w-4 text-muted-foreground transition-all duration-300 group-hover:text-foreground group-hover:scale-110" />
+                            <FilePlus className="action-card-icon-standard" />
                         )}
                         <CardTitle className="text-[15px] font-semibold tracking-wide">
                             {isPending ? '创建中...' : '新建空白文稿'}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-[13px] text-muted-foreground leading-relaxed transition-colors duration-300 group-hover:text-foreground/90">
+                    <CardContent className="relative z-10">
+                        <div className="action-card-desc-standard">
                             开启沉浸式 Markdown 终端，专注于纯粹的文字输入与逻辑推导。
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card onClick={() => setIsImportOpen(true)}
-                    className="cursor-pointer border border-border/50 bg-background shadow-sm transition-all duration-500 ease-out hover:shadow-lg hover:-translate-y-1 hover:border-foreground/50 group">
-                    <CardHeader className="flex flex-row items-center space-y-0 pb-2 gap-2">
-                        <Import className="h-4 w-4 text-muted-foreground transition-all duration-300 group-hover:text-foreground group-hover:scale-110" />
+                <Card onClick={() => setIsImportOpen(true)} className="action-card-standard group/card">
+                    <div className="action-card-grid-standard" />
+                    <CardHeader className="relative flex flex-row items-center space-y-0 pb-2 gap-2 z-10">
+                        <Import className="action-card-icon-standard" />
                         <CardTitle className="text-[15px] font-semibold tracking-wide">导入外部数据</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-[13px] text-muted-foreground leading-relaxed transition-colors duration-300 group-hover:text-foreground/90">
+                    <CardContent className="relative z-10">
+                        <div className="action-card-desc-standard">
                             支持解析本地文件，或直接从系统剪贴板生成。
                         </div>
                     </CardContent>
