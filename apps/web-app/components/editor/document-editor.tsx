@@ -61,6 +61,18 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     })
   }, [])
 
+  // 监听协同同步状态，如果是刚导入的数据，将其填入编辑器中
+  useEffect(() => {
+    if (isSynced && editorInstance) {
+      const importContent = sessionStorage.getItem(`import_content_${initialDocument.id}`)
+      if (importContent) {
+        editorInstance.commands.setContent(importContent)
+        sessionStorage.removeItem(`import_content_${initialDocument.id}`)
+        toast.success("内容导入成功")
+      }
+    }
+  }, [isSynced, editorInstance, initialDocument.id])
+
   const handleFolderChange = async (newFolderId: string) => {
     const targetFolderId = newFolderId === "root" ? null : newFolderId
     setFolderId(targetFolderId)

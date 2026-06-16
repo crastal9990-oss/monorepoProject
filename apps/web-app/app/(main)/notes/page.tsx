@@ -99,6 +99,7 @@ export default function NotesPage() {
         const res = await createNewDocument(folderId || undefined)
         if (res.success) {
             toast.success("文档创建成功")
+            window.dispatchEvent(new CustomEvent('document-created', { detail: { id: res.id } }))
             router.push(`/notes/${res.id}`)
         } else {
             toast.error(res.error || "创建失败")

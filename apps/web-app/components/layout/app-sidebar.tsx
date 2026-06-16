@@ -120,12 +120,25 @@ function AppSidebarInner() {
         }
         window.addEventListener('document-moved', handleDocMoved as EventListener)
 
+        // 监听文档创建与删除
+        const handleDocCreated = () => {
+            fetchDocuments()
+        }
+        window.addEventListener('document-created', handleDocCreated as EventListener)
+
+        const handleDocDeleted = (e: CustomEvent<{ id: string }>) => {
+            setDocuments(prev => prev.filter(doc => doc.id !== e.detail.id))
+        }
+        window.addEventListener('document-deleted', handleDocDeleted as EventListener)
+
         return () => {
             supabase.removeChannel(folderChannel)
             supabase.removeChannel(docChannel)
             window.removeEventListener('folder-updated', handleFolderUpdate as EventListener)
             window.removeEventListener('document-updated', handleDocUpdate as EventListener)
             window.removeEventListener('document-moved', handleDocMoved as EventListener)
+            window.removeEventListener('document-created', handleDocCreated as EventListener)
+            window.removeEventListener('document-deleted', handleDocDeleted as EventListener)
         }
     }, [])
 
@@ -257,6 +270,7 @@ function AppSidebarInner() {
         if (res.success) {
             toast.success("文档已删除")
             setDocuments(prev => prev.filter(d => d.id !== id))
+            window.dispatchEvent(new CustomEvent('document-deleted', { detail: { id } }))
             if (pathname === `/notes/${id}`) {
                 router.push("/notes")
             }

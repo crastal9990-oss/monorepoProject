@@ -11,6 +11,7 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction
 } from "@repo/ui"
 import { RecentNoteCard, Note } from "@/components/dashboard/recent-note-card"
+import { ImportDialog } from "@/components/dashboard/import-dialog"
 import { toast } from '@repo/ui'
 import { createNewDocument, getDocumentList, deleteDocument } from "@/actions/document"
 import { createClient } from '@/utils/supabase/client'
@@ -22,6 +23,7 @@ export default function DashboardPage() {
     const [recentNotes, setRecentNotes] = useState<Note[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [noteToDelete, setNoteToDelete] = useState<Note | null>(null)
+    const [isImportOpen, setIsImportOpen] = useState(false)
 
     useEffect(() => {
         const cachedNotes = localStorage.getItem('dashboard_recent_notes')
@@ -95,6 +97,7 @@ export default function DashboardPage() {
             const res = await deleteDocument(String(noteToDelete.id));
             if (res?.success) {
                 toast.success('笔记已删除');
+                window.dispatchEvent(new CustomEvent('document-deleted', { detail: { id: String(noteToDelete.id) } }));
 
                 // 删除成功后重新请求最新的数据
                 const listRes = await getDocumentList(4);
@@ -149,6 +152,9 @@ export default function DashboardPage() {
 
             if (error || !data) throw error
 
+            // Dispatch event so sidebar knows a new document is created
+            window.dispatchEvent(new CustomEvent('document-created', { detail: data }));
+
             router.push(`/notes/${data.id}`)
         } catch (err: any) {
             toast.error(err.message || '网络请求失败，请重试')
@@ -200,14 +206,15 @@ export default function DashboardPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="cursor-pointer border border-border/50 bg-background shadow-sm transition-all duration-500 ease-out hover:shadow-lg hover:-translate-y-1 hover:border-foreground/50 group">
+                <Card onClick={() => setIsImportOpen(true)}
+                    className="cursor-pointer border border-border/50 bg-background shadow-sm transition-all duration-500 ease-out hover:shadow-lg hover:-translate-y-1 hover:border-foreground/50 group">
                     <CardHeader className="flex flex-row items-center space-y-0 pb-2 gap-2">
                         <Import className="h-4 w-4 text-muted-foreground transition-all duration-300 group-hover:text-foreground group-hover:scale-110" />
                         <CardTitle className="text-[15px] font-semibold tracking-wide">导入外部数据</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-[13px] text-muted-foreground leading-relaxed transition-colors duration-300 group-hover:text-foreground/90">
-                            支持解析本地 Markdown、TXT 文件，或直接从系统剪贴板生成。
+                            支持解析本地文件，或直接从系统剪贴板生成。
                         </div>
                     </CardContent>
                 </Card>
@@ -265,6 +272,9 @@ export default function DashboardPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* 导入外部数据弹窗 */}
+            <ImportDialog open={isImportOpen} onOpenChange={setIsImportOpen} />
         </main>
     )
 }
