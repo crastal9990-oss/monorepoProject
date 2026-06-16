@@ -21,32 +21,13 @@ import {
   toast
 } from "@repo/ui"
 import { createClient } from "@/utils/supabase/client"
-
-// 动态加载 mammoth.js 用于客户端解析 .docx 文件
-const loadMammoth = (): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined") {
-      reject(new Error("window is undefined"))
-      return
-    }
-    const globalWindow = window as any
-    if (globalWindow.mammoth) {
-      resolve(globalWindow.mammoth)
-      return
-    }
-    const script = document.createElement("script")
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"
-    script.onload = () => {
-      if (globalWindow.mammoth) {
-        resolve(globalWindow.mammoth)
-      } else {
-        reject(new Error("mammoth is not defined on window after script load"))
-      }
-    }
-    script.onerror = () => reject(new Error("Failed to load mammoth.js library"))
-    document.head.appendChild(script)
-  })
-}
+import { loadMammoth, convertDocxToHtmlWithImages } from "@/utils/function/mammoth"
+import {
+  convertMarkdownToHtml,
+  convertTxtToHtml,
+  extractPlainTextFromMarkdown,
+  extractPlainTextFromHtml
+} from "@/utils/function/parser"
 
 interface ImportDialogProps {
   open: boolean
@@ -63,6 +44,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [fileContent, setFileContent] = useState<string>("")
   const [fileTitle, setFileTitle] = useState<string>("")
+  const [importMode, setImportMode] = useState<"preview" | "convert">("preview")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 剪贴板状态
@@ -77,6 +59,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
       setFileTitle("")
       setClipboardText("")
       setClipboardTitle("")
+      setImportMode("preview")
       if (fileInputRef.current) fileInputRef.current.value = ""
     }
   }, [open])
@@ -215,20 +198,42 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
 
       // 1. 将 Markdown/TXT/DOCX 内容转换为 HTML
       const isDocx = isFile && selectedFile?.name.endsWith(".docx")
+      const isWordPreview = isDocx && importMode === "preview"
       const isMarkdown = isFile ? (selectedFile?.name.endsWith(".md") || selectedFile?.name.endsWith(".markdown")) : true // 剪贴板内容默认视作 Markdown/富文本
-      
+
       let htmlContent = ""
       let plainText = ""
 
-      if (isDocx) {
-        htmlContent = content
-        plainText = extractPlainTextFromHtml(content)
+      if (isDocx && selectedFile) {
+        if (isWordPreview) {
+          htmlContent = content
+          plainText = extractPlainTextFromHtml(content)
+        } else {
+          // 直接转换模式：读取二进制流，调用公共转换解析工具上传图片并返回 HTML
+          const fileReader = new FileReader()
+          const docxPromise = new Promise<string>((resolve, reject) => {
+            fileReader.onload = async (e) => {
+              try {
+                const arrBuf = e.target?.result as ArrayBuffer
+                const html = await convertDocxToHtmlWithImages(arrBuf)
+                resolve(html)
+              } catch (err) {
+                reject(err)
+              }
+            }
+            fileReader.onerror = () => reject(new Error("读取文件失败"))
+            fileReader.readAsArrayBuffer(selectedFile)
+          })
+
+          htmlContent = await docxPromise
+          plainText = extractPlainTextFromHtml(htmlContent)
+        }
       } else {
         htmlContent = isMarkdown ? convertMarkdownToHtml(content) : convertTxtToHtml(content)
         plainText = extractPlainTextFromMarkdown(content)
       }
 
-      // 2. 向数据库插入新文稿元数据（正文将由协作编辑器通过 sessionStorage 在挂载时同步写入）
+      // 2. 向数据库插入新文稿元数据
       const finalTitle = title || (isFile ? "未命名导入文件" : "未命名剪贴板导入")
       const finalExcerpt = plainText.slice(0, 120).trim()
 
@@ -238,7 +243,9 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
           {
             user_id: user.id,
             title: finalTitle,
-            excerpt: finalExcerpt || "开始你的记录..."
+            excerpt: finalExcerpt || "开始你的记录...",
+            is_word_raw: isWordPreview,
+            word_file_url: null
           }
         ])
         .select()
@@ -246,13 +253,38 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
 
       if (error || !data) throw error
 
+      if (isWordPreview && selectedFile) {
+        // 上传原始 docx 到 Storage 桶 notes-images
+        const filePath = `word_files/${user.id}/${data.id}.docx`
+        const { error: uploadError } = await supabase.storage
+          .from("notes-images")
+          .upload(filePath, selectedFile, {
+            cacheControl: "3600",
+            upsert: true
+          })
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("notes-images")
+          .getPublicUrl(filePath)
+
+        const { error: updateError } = await supabase
+          .from("documents")
+          .update({ word_file_url: publicUrl })
+          .eq("id", data.id)
+
+        if (updateError) throw updateError
+
+        data.word_file_url = publicUrl
+      } else {
+        // 如果是直接转换（或者是 MD/TXT），将 HTML 内容暂存至 sessionStorage 中
+        sessionStorage.setItem(`import_content_${data.id}`, htmlContent)
+      }
+
       // 3. 广播文档创建事件，同步更新左侧侧边栏
       window.dispatchEvent(new CustomEvent('document-created', { detail: data }))
 
-      // 4. 将 HTML 内容暂存至 sessionStorage 中
-      sessionStorage.setItem(`import_content_${data.id}`, htmlContent)
-
-      toast.success("导入成功，正在进入编辑器...")
+      // toast.success("导入成功，正在进入编辑器...")
 
       // 5. 先跳转至编辑器页面
       router.push(`/notes/${data.id}`)
@@ -293,9 +325,11 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
             </TabsTrigger>
           </TabsList>
 
-          <div className="h-[260px] w-full">
+          <div className="h-[300px] w-full">
+            {/* ====== 本地文件导入 Tab ====== */}
             <TabsContent value="file" className="h-full mt-0 focus-visible:outline-none">
               {!selectedFile ? (
+                // 拖拽上传状态
                 <div
                   onDragEnter={handleDrag}
                   onDragOver={handleDrag}
@@ -304,7 +338,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                   onClick={() => fileInputRef.current?.click()}
                   className={`flex flex-col items-center justify-center h-full border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 group ${dragActive
                     ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground/50 hover:bg-muted/30"
+                    : "border-border hover:border-primary/40 hover:bg-muted/30"
                     }`}
                 >
                   <input
@@ -314,25 +348,28 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                     accept=".md,.markdown,.txt,.docx"
                     className="hidden"
                   />
-                  <div className="p-3 bg-muted rounded-full text-muted-foreground mb-4 group-hover:text-foreground transition-colors">
+                  <div className="p-4 bg-muted rounded-full text-muted-foreground mb-4 group-hover:text-primary transition-colors">
                     <Upload className="h-6 w-6" />
                   </div>
                   <p className="text-sm font-medium text-foreground mb-2">
                     拖拽文件到此处，或 点击上传
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    仅支持 .md、.markdown、.txt、.docx、.pdf 格式
+                    仅支持 .md、.txt、.docx 格式
                   </p>
                 </div>
               ) : (
-                <div className="flex flex-col h-full justify-center gap-6">
-                  <div className="flex items-center justify-between border border-border bg-muted/30 rounded-xl p-4">
+                // 文件已选择状态
+                <div className="flex flex-col h-full justify-start gap-5 pt-1">
+
+                  {/* 1. 文件信息卡片 */}
+                  <div className="flex items-center justify-between border border-border bg-muted/20 rounded-xl p-3.5 shadow-sm">
                     <div className="flex items-center gap-4">
-                      <div className="p-3 bg-background rounded-lg shadow-sm text-primary">
-                        <FileText className="h-6 w-6" />
+                      <div className="p-2.5 bg-background border border-border/50 rounded-lg shadow-sm text-primary">
+                        <FileText className="h-5 w-5" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-foreground truncate max-w-[250px]">
+                        <p className="text-sm font-medium text-foreground truncate max-w-[280px]">
                           {selectedFile.name}
                         </p>
                         <p className="text-xs text-muted-foreground font-mono">
@@ -356,6 +393,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                     </Button>
                   </div>
 
+                  {/* 2. 文档标题输入框 */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-foreground">文档标题</label>
                     <Input
@@ -363,54 +401,94 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
                       placeholder="请输入文档标题"
                       value={fileTitle}
                       onChange={(e) => setFileTitle(e.target.value)}
-                      className="h-10"
+                      className="h-10 border-border/80 shadow-sm"
                     />
                   </div>
+
+                  {/* 3. Word 导入选项 (仅当选中 .docx 时渲染) */}
+                  {selectedFile.name.endsWith(".docx") && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-foreground">导入选项</label>
+                      <div className="grid grid-cols-2 gap-4 mt-1">
+
+                        <div
+                          onClick={() => setImportMode('preview')}
+                          className={`relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${importMode === 'preview'
+                            ? 'border-foreground bg-foreground/[0.02] shadow-sm'
+                            : 'border-muted hover:border-foreground/30 hover:bg-muted/30'
+                            }`}
+                        >
+                          <div className={`absolute top-4 right-4 flex items-center justify-center w-4 h-4 rounded-full border ${importMode === 'preview' ? 'border-foreground' : 'border-muted-foreground/40'}`}>
+                            {importMode === 'preview' && <div className="w-2 h-2 rounded-full bg-foreground" />}
+                          </div>
+                          <span className="text-[13px] font-semibold text-foreground mb-1">原始格式预览</span>
+                          <span className="text-[11px] text-muted-foreground leading-relaxed pr-6">Office 预览，只读</span>
+                        </div>
+
+                        <div
+                          onClick={() => setImportMode('convert')}
+                          className={`relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${importMode === 'convert'
+                            ? 'border-foreground bg-foreground/[0.02] shadow-sm'
+                            : 'border-muted hover:border-foreground/30 hover:bg-muted/30'
+                            }`}
+                        >
+                          <div className={`absolute top-4 right-4 flex items-center justify-center w-4 h-4 rounded-full border ${importMode === 'convert' ? 'border-foreground' : 'border-muted-foreground/40'}`}>
+                            {importMode === 'convert' && <div className="w-2 h-2 rounded-full bg-foreground" />}
+                          </div>
+                          <span className="text-[13px] font-semibold text-foreground mb-1">转为在线文档</span>
+                          <span className="text-[11px] text-muted-foreground leading-relaxed pr-6">解析正文并协同编辑</span>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </TabsContent>
 
+            {/* ====== 剪贴板生成 Tab ====== */}
             <TabsContent value="clipboard" className="flex flex-col h-full mt-0 gap-4 focus-visible:outline-none">
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 <Input
                   type="text"
                   placeholder="请输入文档标题（选填）"
                   value={clipboardTitle}
                   onChange={(e) => setClipboardTitle(e.target.value)}
-                  className="h-10 flex-1"
+                  className="h-10 flex-1 border-border/80 shadow-sm"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleReadClipboard}
-                  className="h-10 px-4 gap-2 font-medium"
+                  className="h-10 px-4 gap-2 font-medium bg-background"
                 >
-                  <Clipboard className="h-4 w-4" />
+                  <Clipboard className="h-4 w-4 text-muted-foreground" />
                   读取剪贴板
                 </Button>
               </div>
 
               <div className="flex-1 flex flex-col space-y-2 min-h-0">
-                <label className="text-sm font-medium text-muted-foreground">粘贴文本内容</label>
+                <label className="text-sm font-medium text-foreground">粘贴文本内容</label>
                 <textarea
                   placeholder="在此粘贴或输入 Markdown / 纯文本内容..."
                   value={clipboardText}
                   onChange={(e) => setClipboardText(e.target.value)}
-                  className="flex-1 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                  // resize-none 确保拉伸不会破坏弹窗
+                  className="flex-1 w-full rounded-xl border border-input bg-transparent px-4 py-3 text-[13px] shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none leading-relaxed"
                 />
               </div>
             </TabsContent>
           </div>
         </Tabs>
 
-        <AlertDialogFooter className="pt-6 flex flex-row items-center justify-end gap-3 space-y-0">
+        <AlertDialogFooter className="pt-5 pb-1 flex flex-row items-center justify-end gap-3 space-y-0">
           <AlertDialogCancel asChild>
             <Button
               type="button"
               variant="outline"
               disabled={isPending}
               onClick={() => onOpenChange(false)}
-              className="h-10 px-6 font-medium border-border"
+              className="h-10 px-6 font-medium border-border/80 hover:bg-muted/50"
             >
               取消
             </Button>
@@ -419,7 +497,7 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
             type="button"
             disabled={isPending || (activeTab === "file" ? !selectedFile : !clipboardText.trim())}
             onClick={handleImport}
-            className="h-10 px-6 font-medium bg-primary text-primary-foreground hover:bg-primary/90 gap-2"
+            className="h-10 px-6 font-medium bg-foreground text-background hover:bg-foreground/90 gap-2 shadow-md"
           >
             {isPending ? (
               <>
@@ -436,192 +514,4 @@ export function ImportDialog({ open, onOpenChange }: ImportDialogProps) {
   )
 }
 
-// ─── Markdown/TXT 转 HTML 解析算法 ──────────────────────────────────────────
 
-export function convertMarkdownToHtml(markdown: string): string {
-  const lines = markdown.split(/\r?\n/)
-  let html = ""
-  let inList = false
-  let listType: "ul" | "ol" | null = null
-  let inCodeBlock = false
-  let codeBlockContent = ""
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-
-    // 解析代码块
-    if (line.trim().startsWith("```")) {
-      if (inCodeBlock) {
-        inCodeBlock = false
-        const escaped = codeBlockContent
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-        html += `<pre><code>${escaped}</code></pre>\n`
-        codeBlockContent = ""
-      } else {
-        inCodeBlock = true
-      }
-      continue
-    }
-
-    if (inCodeBlock) {
-      codeBlockContent += (codeBlockContent ? "\n" : "") + line
-      continue
-    }
-
-    // 解析标题
-    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/)
-    if (headingMatch) {
-      if (inList) {
-        html += listType === "ul" ? "</ul>\n" : "</ol>\n"
-        inList = false
-        listType = null
-      }
-      const level = headingMatch[1].length
-      const text = parseInlineMarkdown(headingMatch[2])
-      html += `<h${level}>${text}</h${level}>\n`
-      continue
-    }
-
-    // 解析区块引用
-    const blockquoteMatch = line.match(/^>\s*(.*)$/)
-    if (blockquoteMatch) {
-      if (inList) {
-        html += listType === "ul" ? "</ul>\n" : "</ol>\n"
-        inList = false
-        listType = null
-      }
-      const text = parseInlineMarkdown(blockquoteMatch[1])
-      html += `<blockquote>${text}</blockquote>\n`
-      continue
-    }
-
-    // 解析无序列表
-    const ulMatch = line.match(/^\s*[-*+]\s+(.*)$/)
-    if (ulMatch) {
-      if (!inList || listType !== "ul") {
-        if (inList) {
-          html += listType === "ul" ? "</ul>\n" : "</ol>\n"
-        }
-        html += "<ul>\n"
-        inList = true
-        listType = "ul"
-      }
-      const text = parseInlineMarkdown(ulMatch[1])
-      html += `<li>${text}</li>\n`
-      continue
-    }
-
-    // 解析有序列表
-    const olMatch = line.match(/^\s*(\d+)\.\s+(.*)$/)
-    if (olMatch) {
-      if (!inList || listType !== "ol") {
-        if (inList) {
-          html += listType === "ul" ? "</ul>\n" : "</ol>\n"
-        }
-        html += "<ol>\n"
-        inList = true
-        listType = "ol"
-      }
-      const text = parseInlineMarkdown(olMatch[2])
-      html += `<li>${text}</li>\n`
-      continue
-    }
-
-    // 空行处理
-    if (line.trim() === "") {
-      if (inList) {
-        html += listType === "ul" ? "</ul>\n" : "</ol>\n"
-        inList = false
-        listType = null
-      }
-      continue
-    }
-
-    // 普通段落
-    if (inList) {
-      html += listType === "ul" ? "</ul>\n" : "</ol>\n"
-      inList = false
-      listType = null
-    }
-    const text = parseInlineMarkdown(line)
-    html += `<p>${text}</p>\n`
-  }
-
-  if (inList) {
-    html += listType === "ul" ? "</ul>\n" : "</ol>\n"
-  }
-
-  return html
-}
-
-function parseInlineMarkdown(text: string): string {
-  return text
-    // 转义 HTML 字符
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    // 粗体
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    // 斜体
-    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
-    // 行内代码
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    // 超链接
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-}
-
-function convertTxtToHtml(txt: string): string {
-  return txt
-    .split(/\r?\n/)
-    .map(line => {
-      const trimmed = line.trim()
-      if (!trimmed) return ""
-      const escaped = trimmed
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-      return `<p>${escaped}</p>`
-    })
-    .filter(Boolean)
-    .join("\n")
-}
-
-function extractPlainTextFromMarkdown(markdown: string): string {
-  // 从 Markdown 中提取纯文本以生成列表摘要
-  let text = markdown
-    // 移除标题标记
-    .replace(/^#{1,6}\s+/gm, "")
-    // 移除引用标记
-    .replace(/^>\s+/gm, "")
-    // 移除代码块
-    .replace(/```[\s\S]*?```/g, "")
-    // 移除行内代码
-    .replace(/`([^`]+)`/g, "$1")
-    // 移除加粗/斜体
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    // 移除超链接（仅保留文本）
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
-    // 移除列表标记
-    .replace(/^\s*[-*+]\s+/gm, "")
-    .replace(/^\s*\d+\.\s+/gm, "")
-
-  // 移除多余换行并格式化空格
-  return text.replace(/\s+/g, " ").trim()
-}
-
-function extractPlainTextFromHtml(html: string): string {
-  // 移除所有 HTML 标签
-  let text = html.replace(/<[^>]*>/g, " ")
-  // 转义常见 HTML 实体
-  text = text
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, " ")
-  return text.replace(/\s+/g, " ").trim()
-}
