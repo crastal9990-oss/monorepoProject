@@ -24,6 +24,41 @@ const navMain = [
 
 const tags = ["计算机视觉", "Web开发", "论文阅读"]
 
+function DocIcon({ doc, className = "!size-3.5 shrink-0" }: { doc: any, className?: string }) {
+    if (doc.is_pdf_raw) {
+        return (
+            <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="8" cy="14" r="2" stroke="currentColor" strokeWidth="2"/>
+                <circle cx="16" cy="9" r="2" stroke="currentColor" strokeWidth="2"/>
+                <circle cx="16" cy="18" r="2" stroke="currentColor" strokeWidth="2"/>
+                <path d="M15 16L9 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M15 11L9 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+        )
+    }
+    if (doc.is_word_raw) {
+        return (
+            <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M8 12L10 18L12 14L14 18L16 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+        )
+    }
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M14 2V8H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M8 13H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M8 17H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            <path d="M8 9H10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+    )
+}
+
+
 function AppSidebarInner() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
@@ -483,7 +518,7 @@ function AppSidebarInner() {
                                                                         <div className="relative group/doc-header w-full flex items-center rounded-md">
                                                                             {isDocEditing ? (
                                                                                 <div className="flex items-center gap-2 px-2 py-1.5 w-full pl-6 bg-accent/50 rounded-md">
-                                                                                    <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                                                                    <DocIcon doc={doc} className="!size-3.5 text-muted-foreground shrink-0" />
                                                                                     <input
                                                                                         autoFocus
                                                                                         type="text"
@@ -520,7 +555,7 @@ function AppSidebarInner() {
                                                                                                     {(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? (
                                                                                                         <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0" />
                                                                                                     ) : (
-                                                                                                        <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                                                                                        <DocIcon doc={doc} className="!size-3.5 text-muted-foreground shrink-0" />
                                                                                                     )}
                                                                                                     <span className="text-xs font-medium tracking-wide truncate">{doc.title || "无标题"}</span>
                                                                                                 </Link>
@@ -576,7 +611,7 @@ function AppSidebarInner() {
                                                     {isDocEditing ? (
                                                         <div className="flex items-center gap-2 px-2 py-1.5 w-full bg-accent/50 rounded-md">
                                                             <div className="size-3.5 p-0.5 -ml-1 mr-1 shrink-0" />
-                                                            <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                                            <DocIcon doc={doc} className="!size-3.5 text-muted-foreground shrink-0" />
                                                             <input
                                                                 autoFocus
                                                                 type="text"
@@ -615,7 +650,7 @@ function AppSidebarInner() {
                                                                                 {(pendingRenameDocId === doc.id || pendingDeleteDocId === doc.id) ? (
                                                                                     <Loader2 className="size-3.5 text-muted-foreground animate-spin shrink-0" />
                                                                                 ) : (
-                                                                                    <FileText className="size-3.5 text-muted-foreground shrink-0" />
+                                                                                    <DocIcon doc={doc} className="!size-3.5 text-muted-foreground shrink-0" />
                                                                                 )}
                                                                                 <span className="text-[13px] font-medium tracking-wide truncate">{doc.title || "无标题"}</span>
                                                                             </Link>
