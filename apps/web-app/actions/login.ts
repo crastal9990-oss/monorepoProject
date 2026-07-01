@@ -54,13 +54,20 @@ export async function signup(formData: FormData) {
     return { error: '该邮箱已被注册，请直接前往登录！' }
   }
 
+  if (data?.session) {
+    // 如果返回了 session，说明 Supabase 后台关闭了邮箱验证，用户已直接登录成功
+    return { success: true, message: '注册成功，已为您自动登录！', redirect: '/dashboard' }
+  }
+
   return { success: true, message: '注册成功，请前往您的邮箱查收激活邮件！' }
 }
 
 // GitHub 快捷登录/注册
 export async function signInWithGithub(formData: FormData) {
   const supabase = createClient()
-  const origin = headers().get('origin') // 获取当前网站的域名 (例如 http://localhost:3000)
+  const host = headers().get('host')
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+  const origin = `${protocol}://${host}`
   const next = formData.get('next') as string || '/dashboard'
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -70,7 +77,11 @@ export async function signInWithGithub(formData: FormData) {
     },
   })
 
-  if (data.url) {
+  if (error) {
+    console.error('GitHub login error:', error.message)
+  }
+
+  if (data?.url) {
     redirect(data.url) // 获取到 GitHub 的授权页面链接后，让用户浏览器跳转过去
   }
 }
@@ -78,7 +89,9 @@ export async function signInWithGithub(formData: FormData) {
 // Google 快捷登录/注册
 export async function signInWithGoogle(formData: FormData) {
   const supabase = createClient()
-  const origin = headers().get('origin')
+  const host = headers().get('host')
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+  const origin = `${protocol}://${host}`
   const next = formData.get('next') as string || '/dashboard'
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -88,7 +101,11 @@ export async function signInWithGoogle(formData: FormData) {
     },
   })
 
-  if (data.url) {
+  if (error) {
+    console.error('Google login error:', error.message)
+  }
+
+  if (data?.url) {
     redirect(data.url)
   }
 }

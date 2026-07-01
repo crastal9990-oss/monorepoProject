@@ -42,7 +42,11 @@ export default function RegisterPage() {
                 else if (res?.success) {
                     toast.success(res.message)
                     formEmail.reset()
-                    router.push("/login")
+                    if (res.redirect) {
+                        router.push(res.redirect)
+                    } else {
+                        router.push("/login")
+                    }
                 }
             })
         })
