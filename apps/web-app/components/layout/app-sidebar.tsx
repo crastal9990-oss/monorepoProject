@@ -77,6 +77,7 @@ function AppSidebarInner() {
     const [isLoadingFolders, setIsLoadingFolders] = useState(true)
     const [folderToDelete, setFolderToDelete] = useState<{ id: string; name: string } | null>(null)
     const [documents, setDocuments] = useState<any[]>([])
+    const [isLoadingDocuments, setIsLoadingDocuments] = useState(true)
     const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
 
     const [editingDocId, setEditingDocId] = useState<string | null>(null)
@@ -90,6 +91,7 @@ function AppSidebarInner() {
             if (res.success && res.data) {
                 setDocuments(res.data)
             }
+            setIsLoadingDocuments(false)
         })
     }
 
@@ -416,7 +418,7 @@ function AppSidebarInner() {
                                 </SidebarMenuItem>
                             )}
 
-                            {isLoadingFolders ? (
+                            {isLoadingFolders || isLoadingDocuments ? (
                                 <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground/60">
                                     <Loader2 className="size-3.5 animate-spin" />
                                     <span>加载中...</span>
