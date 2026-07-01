@@ -2,8 +2,8 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# 安装 pnpm
-RUN npm install -g pnpm
+# 用 corepack 激活 pnpm（Node.js 内置，不需要额外安装，省内存）
+RUN corepack enable && corepack prepare pnpm@8.6.0 --activate
 
 # 复制 monorepo 根配置
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
