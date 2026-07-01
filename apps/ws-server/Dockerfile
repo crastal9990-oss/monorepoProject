@@ -5,8 +5,8 @@ WORKDIR /app
 # 用 corepack 激活 pnpm（Node.js 内置，不需要额外安装，省内存）
 RUN corepack enable && corepack prepare pnpm@8.6.0 --activate
 
-# 复制 monorepo 根配置
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+# 复制 monorepo 根配置（不含 .npmrc，ws-server 不依赖私有 TipTap Pro 包）
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # 复制所有 workspace 包的 package.json（pnpm 安装时需要）
 COPY apps/ws-server/package.json ./apps/ws-server/package.json
