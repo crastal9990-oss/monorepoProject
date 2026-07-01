@@ -31,27 +31,26 @@ export function RecentNoteCard({ note, onDelete }: RecentNoteCardProps) {
             {/* 科技感悬浮指示线 */}
             <div className="absolute left-0 top-0 h-full w-[3px] bg-primary scale-y-0 group-hover:scale-y-100 origin-top transition-transform duration-500 ease-out" />
 
-            <CardHeader className="p-5 pb-3">
-                <div className="flex justify-between items-start mb-3">
-                    {/* 前缀 # 符号， */}
-                    <span className="text-[11px] font-medium tracking-wide px-2 py-0.5 rounded-sm bg-muted text-muted-foreground transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
+            <CardHeader className="p-5 pb-2">
+                <div className="flex justify-between items-start">
+                    {/* <span className="text-[11px] font-medium tracking-wide px-2 py-0.5 rounded-sm bg-muted text-muted-foreground transition-colors duration-300 group-hover:bg-primary group-hover:text-primary-foreground">
                         <span className="opacity-50 mr-0.5">#</span>{note.tag}
-                    </span>
+                    </span> */}
+                    {/* 标题 */}
+                    <CardTitle className="text-[15px] font-semibold line-clamp-2 leading-relaxed transition-transform duration-300 group-hover:translate-x-1">
+                        {note.title || "无标题文稿"}
+                    </CardTitle>
                     {/* 删除 */}
                     {onDelete && (
                         <button
                             onClick={handleDelete}
-                            className="p-1.5 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors opacity-0 opacity-100 z-10"
+                            className="p-1.5 text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors opacity-0 group-hover:opacity-100 z-10 shrink-0 ml-3"
                             title="删除笔记"
                         >
                             <Trash2 className="h-3.5 w-3.5" />
                         </button>
                     )}
                 </div>
-                {/* 标题 */}
-                <CardTitle className="text-[15px] font-semibold line-clamp-2 leading-relaxed transition-transform duration-300 group-hover:translate-x-1">
-                    {note.title || "无标题文稿"}
-                </CardTitle>
             </CardHeader>
             {/* 摘要 */}
             <CardContent className="p-5 pt-0 flex-1 flex flex-col justify-between">
