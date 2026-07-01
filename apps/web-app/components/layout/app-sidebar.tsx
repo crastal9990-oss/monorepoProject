@@ -720,7 +720,7 @@ function AppSidebarInner() {
                 </SidebarGroup> */}
             </SidebarContent>
 
-            <SidebarFooter>
+            {/* <SidebarFooter>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" className="transition-all duration-300 hover:bg-accent">
@@ -734,7 +734,7 @@ function AppSidebarInner() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
-            </SidebarFooter>
+            </SidebarFooter> */}
 
             <AlertDialog open={!!folderToDelete} onOpenChange={(open) => { if (!open) setFolderToDelete(null) }}>
                 <AlertDialogContent>

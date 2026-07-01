@@ -16,3 +16,5 @@ export * from "./components/drawer"
 export * from './components/scroll-area'
 export * from './components/select'
 export * from './components/pagination'
+export * from './components/dropdown-menu'
+export * from './components/dialog'
