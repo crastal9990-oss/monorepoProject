@@ -41,7 +41,6 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
   const shareToken = searchParams.get('token')
 
   const [title, setTitle] = useState(initialDocument.title)
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error'>('saved')
   const [lastSavedAt, setLastSavedAt] = useState<Date>(new Date())
   const [onlineUsers, setOnlineUsers] = useState<number>(1)
   const [authToken, setAuthToken] = useState<string | null>(null)
@@ -57,6 +56,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
 
   const isOwner = currentUserId === initialDocument.user_id
   const isEditable = isOwner || initialDocument.share_permission === 'editor'
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'error' | 'offline'>('saved')
 
   // 加载用户文件夹列表
   useEffect(() => {
@@ -65,6 +65,47 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
         setFolders(res.data)
       }
     })
+  }, [])
+
+  // 初始化加载可能存在的离线标题
+  useEffect(() => {
+    const offlineTitle = localStorage.getItem(`offline_title_${initialDocument.id}`)
+    if (offlineTitle && offlineTitle !== initialDocument.title) {
+      setTitle(offlineTitle)
+    }
+  }, [initialDocument.id, initialDocument.title])
+
+  // 监听全局网络状态，实现精准的离线/上线提示
+  useEffect(() => {
+    const handleOffline = () => {
+      setSaveStatus('offline')
+      toast.info('网络已断开，将开启本地保存', { id: 'network-status', duration: 4000 })
+    }
+    const handleOnline = () => {
+      setSaveStatus('saved')
+      toast.success('网络已恢复，数据已自动同步', { id: 'network-status', duration: 3000 })
+      // 网络恢复时，同步离线保存的标题
+      const offlineTitle = localStorage.getItem(`offline_title_${initialDocument.id}`)
+      if (offlineTitle) {
+        const supabase = createClient()
+        supabase
+          .from('documents')
+          .update({ title: offlineTitle, updated_at: new Date().toISOString() })
+          .eq('id', initialDocument.id)
+          .then(({ error }) => {
+            if (!error) localStorage.removeItem(`offline_title_${initialDocument.id}`)
+          })
+      }
+    }
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline)
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      handleOffline()
+    }
+    return () => {
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
+    }
   }, [])
 
   // 监听协同同步状态，如果是刚导入的数据，将其填入编辑器中
@@ -194,6 +235,14 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     }))
 
     titleSaveTimer.current = setTimeout(async () => {
+      if (!navigator.onLine) {
+        setSaveStatus('offline')
+        // 离线时保存到 localStorage
+        localStorage.setItem(`offline_title_${initialDocument.id}`, title)
+        return
+      }
+      // 在线时如果有历史缓存则清理掉
+      localStorage.removeItem(`offline_title_${initialDocument.id}`)
       try {
         const supabase = createClient()
         const { error } = await supabase
@@ -226,6 +275,7 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
     saved: `最近更新 ${lastSavedAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`,
     saving: '正在保存...',
     error: '保存失败',
+    offline: '🌥️ 离线(修改已存本地)',
   }[saveStatus]
 
   return (
@@ -468,7 +518,9 @@ export default function DocumentEditor({ initialDocument }: DocumentEditorProps)
                           setSaveStatus('saved')
                           setLastSavedAt(new Date())
                         }
-                        else if (status === 'disconnected') setSaveStatus('error')
+                        else if (status === 'disconnected') {
+                          setSaveStatus('offline')
+                        }
                         else if (status === 'saved') {
                           setSaveStatus('saved')
                           if (time) setLastSavedAt(new Date(time))

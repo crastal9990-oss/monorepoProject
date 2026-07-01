@@ -16,6 +16,7 @@ import Collaboration from '@tiptap/extension-collaboration'
 import CollaborationCaret from '@tiptap/extension-collaboration-caret'
 import { HocuspocusProvider } from '@hocuspocus/provider'
 import * as Y from 'yjs'
+import { IndexeddbPersistence } from 'y-indexeddb'
 import { useEffect, useState, useRef } from 'react'
 import './editor.css'
 import {
@@ -168,9 +169,20 @@ export function CollaborativeEditor({
 
   // 1. 初始状态为 null
   const [provider, setProvider] = useState<HocuspocusProvider | null>(null)
+  const [isLocalLoaded, setIsLocalLoaded] = useState(false) // 记录本地数据是否加载完成
 
   // 2. 在 useEffect 中安全地创建和销毁
   useEffect(() => {
+    // 🌟 新增：绑定 IndexedDB 进行本地持久化
+    const indexeddbProvider = new IndexeddbPersistence(`document-${documentId}`, ydoc)
+    
+    indexeddbProvider.on('synced', () => {
+      setIsLocalLoaded(true)
+      console.log('Local content loaded from IndexedDB')
+      // 通知外部隐藏骨架屏，实现秒开
+      onStatusChangeRef.current?.('synced')
+    })
+
     const newProvider = new HocuspocusProvider({
       url: wsServerUrl,
       name: documentId,
@@ -208,6 +220,7 @@ export function CollaborativeEditor({
     // 只有组件真正卸载时，才销毁它
     return () => {
       newProvider.destroy()
+      indexeddbProvider.destroy()
     }
   }, [wsServerUrl, documentId, authToken, ydoc])
 
